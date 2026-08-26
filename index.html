@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Dots&family=Manrope:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
   :root{
@@ -381,8 +382,70 @@
   }
   .lib-subtab.active{ border-color:var(--gold); color:var(--gold); }
 
-  footer{ padding:30px 6vw 60px; color:var(--dim); font-size:.72rem; font-family:'JetBrains Mono', monospace; border-top:1px solid var(--edge); }
+  footer{
+    padding:30px 6vw 60px; color:var(--dim); font-size:.72rem; font-family:'JetBrains Mono', monospace;
+    border-top:1px solid var(--edge); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;
+  }
+  .footer-admin-link{
+    background:none; border:1px solid var(--edge); color:var(--dim); border-radius:8px;
+    padding:7px 14px; font-family:'JetBrains Mono', monospace; font-size:.72rem; cursor:pointer;
+    transition:color .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .footer-admin-link:hover{ color:var(--gold); border-color:var(--gold); background:rgba(242,193,78,.06); }
+
+  /* Estilos para inputs de URL de imagen / Pinterest y portapapeles */
+  .img-url-row{ display:flex; gap:8px; margin-bottom:8px; align-items:center; }
+  .img-url-input{
+    flex:1; padding:9px 12px; border-radius:8px; border:1px solid var(--edge);
+    background:#1c1530; color:var(--ink); font-family:'Manrope', sans-serif; font-size:.82rem;
+  }
+  .img-url-input:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+  .img-url-btn{
+    font-family:'JetBrains Mono', monospace; font-size:.7rem; font-weight:700;
+    padding:9px 12px; border-radius:8px; border:1px solid var(--edge); background:#140f1f;
+    color:var(--dim); cursor:pointer; flex-shrink:0; text-transform:uppercase; letter-spacing:.04em;
+  }
+  .img-url-btn:hover{ color:var(--gold); border-color:var(--gold); }
+  .img-paste-hint{ font-family:'JetBrains Mono', monospace; font-size:.65rem; color:var(--dim); margin-top:6px; line-height:1.4; opacity:.85; }
+  .preview.drag-over{ border-color:var(--gold); border-style:dashed; background-color:rgba(242,193,78,.1); }
+
+  /* Modal de login */
+  #loginDialog{ width:min(440px,94vw); }
+  .login-error{
+    color:#f28fc0; font-size:.82rem; margin-top:12px; display:none;
+    background:rgba(242,143,192,.1); padding:10px 14px; border-radius:8px; border:1px solid rgba(242,143,192,.3);
+    font-family:'Manrope', sans-serif; line-height:1.4;
+  }
+
   .loading{ text-align:center; padding:80px 20px; color:var(--dim); font-family:'JetBrains Mono', monospace; }
+
+  /* ===== Sincronización de banners (nuevo) ===== */
+  #syncPreviewDialog{ width:min(760px,95vw); max-height:90vh; }
+  #syncPreviewDialog .dialog-inner{ max-height:90vh; }
+  .sync-source-row{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .sync-status{
+    font-family:'JetBrains Mono', monospace; font-size:.78rem; color:var(--dim);
+    background:rgba(255,255,255,.03); border:1px solid var(--edge); border-radius:9px; padding:12px 14px; margin-bottom:14px;
+    line-height:1.6; white-space:pre-line;
+  }
+  .sync-status.error{ color:#f28fc0; border-color:rgba(242,143,192,.35); }
+  .sync-status.ok{ color:var(--gold); }
+  .sync-paste-block{ margin-bottom:16px; }
+  .sync-paste-block textarea{ min-height:110px; font-family:'JetBrains Mono', monospace; font-size:.78rem; }
+  .sync-results{ display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+  .sync-result-row{
+    display:flex; gap:12px; align-items:flex-start; border:1px solid var(--edge); border-radius:11px; padding:12px;
+    background:rgba(255,255,255,.02);
+  }
+  .sync-result-row input[type="checkbox"]{ margin-top:6px; width:16px; height:16px; accent-color:var(--gold); cursor:pointer; }
+  .sync-result-thumb{ width:60px; height:60px; border-radius:8px; background-size:cover; background-position:center; background-color:#1c1530; border:1px solid var(--edge); flex-shrink:0; }
+  .sync-result-fields{ flex:1; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .sync-result-fields input, .sync-result-fields textarea{
+    width:100%; padding:7px 9px; border-radius:6px; border:1px solid var(--edge); background:#1c1530;
+    color:var(--ink); font-family:'Manrope', sans-serif; font-size:.8rem;
+  }
+  .sync-result-fields .full-width{ grid-column:1/-1; }
+  .sync-empty{ text-align:center; padding:30px 10px; color:var(--dim); font-size:.85rem; }
 
   @media (prefers-reduced-motion: reduce){ *{ transition:none !important; } }
 </style>
@@ -412,6 +475,7 @@
     <section class="panel active" id="panel-active">
       <div class="toolbar">
         <button class="btn btn-primary admin-only" style="display:none;" data-open="banner">+ Nuevo banner</button>
+        <button class="btn btn-ghost admin-only" style="display:none;" id="openSyncBtn">🌐 Sincronizar Banners Web</button>
         <select class="sort-select" id="sortActive">
           <option value="default">Orden: termina antes</option>
           <option value="name-asc">Nombre A-Z</option>
@@ -425,6 +489,7 @@
     <section class="panel" id="panel-upcoming">
       <div class="toolbar">
         <button class="btn btn-primary admin-only" style="display:none;" data-open="banner">+ Nuevo banner</button>
+        <button class="btn btn-ghost admin-only" style="display:none;" id="openSyncBtnUpcoming">🌐 Sincronizar Banners Web</button>
         <select class="sort-select" id="sortUpcoming">
           <option value="default">Orden: empieza antes</option>
           <option value="name-asc">Nombre A-Z</option>
@@ -469,8 +534,34 @@
     </section>
   </main>
 
-  <footer>ZeroGameGacha — Esta pagina no tiene afiliación con los estudios de los juegos mencionados, pagina de fans para fans</footer>
+  <footer>
+    <span>ZeroGameGacha — Esta pagina no tiene afiliación con los estudios de los juegos mencionados, pagina de fans para fans</span>
+    <button class="footer-admin-link" id="openLoginBtn">🔐 Acceso Admin</button>
+  </footer>
 </div>
+
+<!-- Admin login dialog -->
+<dialog id="loginDialog">
+  <div class="dialog-inner">
+    <h2>Acceso de Administrador</h2>
+    <p style="color:var(--dim); font-size:.82rem; margin-top:-10px; margin-bottom:18px;">Ingresá con tu cuenta de administrador de Firebase.<br><span style="font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--gold);">Atajo rápido: Ctrl + Shift + A</span></p>
+    <form id="loginForm" onsubmit="return false;">
+      <div class="field">
+        <label>Correo electrónico</label>
+        <input type="email" id="loginEmail" placeholder="admin@ejemplo.com" required autocomplete="username">
+      </div>
+      <div class="field">
+        <label>Contraseña</label>
+        <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <div class="login-error" id="loginError"></div>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="loginCancel">Cancelar</button>
+        <button type="submit" class="btn btn-primary" id="loginSubmit">Ingresar</button>
+      </div>
+    </form>
+  </div>
+</dialog>
 
 <!-- Banner dialog -->
 <dialog id="bannerDialog">
@@ -485,6 +576,7 @@
         <option value="uma">Umamusume</option>
       </select>
     </div>
+    <button type="button" class="btn btn-ghost admin-only" id="bannerSyncBtn" style="margin-bottom:14px;">🔍 Buscar Banners Actuales</button>
     <div class="field">
       <label>Color del banner</label>
       <input type="color" id="bColor" value="#f2c14e">
@@ -511,6 +603,42 @@
   </div>
 </dialog>
 
+<!-- Sync preview dialog (nuevo) -->
+<dialog id="syncPreviewDialog">
+  <div class="dialog-inner">
+    <h2>🌐 Sincronizar banners</h2>
+    <div class="field">
+      <label>Juego</label>
+      <select id="syncGame">
+        <option value="genshin">Genshin Impact</option>
+        <option value="hsr">Honkai: Star Rail</option>
+        <option value="zzz">Zenless Zone Zero</option>
+        <option value="uma">Umamusume</option>
+      </select>
+    </div>
+    <div class="sync-source-row">
+      <button type="button" class="btn btn-ghost" id="syncAutoBtn">🤖 Intentar búsqueda automática</button>
+    </div>
+    <div class="sync-status" id="syncStatus">Elegí un juego y probá la búsqueda automática, o pegá los datos manualmente abajo. La búsqueda automática es experimental: depende de que la wiki del juego esté disponible desde el navegador y puede fallar — si eso pasa, usá el modo manual, que siempre funciona.</div>
+    <div class="sync-paste-block">
+      <div class="field">
+        <label>Pegar datos manualmente (formato JSON) <span style="color:var(--dim); text-transform:none; font-weight:400;">— una lista de banners con nombre, fechas e imagen</span></label>
+        <textarea id="syncPasteInput" placeholder='[
+  { "name": "Arlecchino", "start": "2026-08-12", "end": "2026-09-01", "image": "https://...", "notes": "Rerun 5★" }
+]'></textarea>
+      </div>
+      <button type="button" class="btn btn-ghost" id="syncParsePasteBtn">📋 Cargar datos pegados</button>
+    </div>
+    <div id="syncResultsContainer">
+      <div class="sync-empty">Todavía no hay banners para previsualizar.</div>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" id="syncCancel">Cerrar</button>
+      <button class="btn btn-primary" id="syncImportBtn">📥 Importar seleccionados</button>
+    </div>
+  </div>
+</dialog>
+
 <!-- Build dialog -->
 <dialog id="buildDialog">
   <div class="dialog-inner">
@@ -531,8 +659,13 @@
     <div class="field"><label>Nombre del personaje</label><input id="uName" placeholder="ej. Furina, Acheron, Ellen..."></div>
     <div class="field">
       <label>Retrato</label>
+      <div class="img-url-row">
+        <input type="text" class="img-url-input" id="uPortraitUrl" placeholder="Pegar URL directa de imagen o Pinterest...">
+        <button type="button" class="img-url-btn" id="uPortraitUrlBtn">Cargar URL</button>
+      </div>
       <input type="file" id="uPortraitFile" accept="image/*">
       <div class="preview" id="uPortraitPreview">sin imagen</div>
+      <div class="img-paste-hint">💡 Podés subir archivo, pegar URL directa, arrastrar o presionar Ctrl+V</div>
     </div>
 
     <div class="subsection">
@@ -618,8 +751,13 @@
     <div class="field"><label>Nombre</label><input id="lName" placeholder="ej. Espada de la vendimia, Disco 4, Furina..."></div>
     <div class="field">
       <label>Imagen</label>
+      <div class="img-url-row">
+        <input type="text" class="img-url-input" id="lImageUrl" placeholder="Pegar URL directa de imagen o Pinterest...">
+        <button type="button" class="img-url-btn" id="lImageUrlBtn">Cargar URL</button>
+      </div>
       <input type="file" id="lImageFile" accept="image/*">
       <div class="preview" id="lImagePreview">sin imagen</div>
+      <div class="img-paste-hint">💡 Podés subir archivo, pegar URL directa, arrastrar o presionar Ctrl+V</div>
     </div>
     <div class="field"><label>Estadísticas / notas</label><textarea id="lStats" placeholder="ej. ATQ+, Daño crítico, sets recomendados, rol en el equipo..."></textarea></div>
     <div class="dialog-actions">
@@ -652,8 +790,13 @@
     </div>
     <div id="imageBlock" class="field" style="display:none;">
       <label>Imagen de fondo</label>
+      <div class="img-url-row">
+        <input type="text" class="img-url-input" id="cBgUrl" placeholder="Pegar URL directa de imagen...">
+        <button type="button" class="img-url-btn" id="cBgUrlBtn">Cargar URL</button>
+      </div>
       <input type="file" id="cBgFile" accept="image/*">
       <div class="preview" id="cBgPreview">sin imagen</div>
+      <div class="img-paste-hint">💡 Podés subir archivo, pegar URL directa o arrastrar imagen</div>
     </div>
     <div class="dialog-actions">
       <button class="btn btn-ghost" id="configCancel">Cancelar</button>
@@ -673,24 +816,107 @@ const firebaseConfig = {
   appId: "1:4151101550:web:13062ac9ef763861643e7f"
 };
 firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
 const db = firebase.firestore();
 
-// ====== ADMIN GATE ======
-// CAMBIA ESTA CLAVE antes de compartir el link publico. Compartí SOLO la URL base
-// (sin ?admin=...) con el resto. Guardate vos el link con ?admin=TUCLAVE.
-const ADMIN_SECRET = "Xerelol1998";
-const params = new URLSearchParams(window.location.search);
-const isAdmin = params.get('admin') === ADMIN_SECRET;
+// ====== ADMIN AUTHENTICATION (SEGURO) ======
+let isAdmin = false;
 
-if(isAdmin){
-  document.getElementById('adminPill').style.display = 'flex';
-  document.getElementById('openConfigBtn').style.display = 'inline-block';
-  document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'inline-block');
+// Limpieza automática de la URL (si quedó un parámetro ?admin=... viejo en el navegador, se limpia)
+const params = new URLSearchParams(window.location.search);
+if(params.has('admin')){
+  const cleanUrl = new URL(window.location.href);
+  cleanUrl.searchParams.delete('admin');
+  window.history.replaceState({}, document.title, cleanUrl.toString());
 }
-document.getElementById('exitAdmin').addEventListener('click', () => {
-  const url = new URL(window.location.href);
-  url.searchParams.delete('admin');
-  window.location.href = url.toString();
+
+function updateAdminUI(){
+  document.getElementById('adminPill').style.display = isAdmin ? 'flex' : 'none';
+  document.getElementById('openConfigBtn').style.display = isAdmin ? 'inline-block' : 'none';
+  document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? 'inline-block' : 'none');
+  const loginBtn = document.getElementById('openLoginBtn');
+  if(loginBtn) loginBtn.style.display = isAdmin ? 'none' : 'inline-block';
+}
+
+// Escuchador en tiempo real del estado de autenticación con Firebase
+auth.onAuthStateChanged(user => {
+  isAdmin = !!user;
+  updateAdminUI();
+  renderBanners();
+  renderBuilds();
+  renderLibrary();
+});
+
+// Cerrar sesión
+document.getElementById('exitAdmin').addEventListener('click', async () => {
+  try{
+    await auth.signOut();
+  }catch(err){
+    alert('Error al cerrar sesión: ' + err.message);
+  }
+});
+
+// Modal de Login
+const loginDialog = document.getElementById('loginDialog');
+const loginForm = document.getElementById('loginForm');
+const loginError = document.getElementById('loginError');
+const loginEmail = document.getElementById('loginEmail');
+const loginPassword = document.getElementById('loginPassword');
+const loginSubmit = document.getElementById('loginSubmit');
+
+function openAdminLogin(){
+  loginError.style.display = 'none';
+  loginError.textContent = '';
+  loginEmail.value = '';
+  loginPassword.value = '';
+  loginDialog.showModal();
+  setTimeout(() => loginEmail.focus(), 50);
+}
+
+document.getElementById('openLoginBtn')?.addEventListener('click', openAdminLogin);
+document.getElementById('loginCancel')?.addEventListener('click', () => loginDialog.close());
+
+loginForm?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = loginEmail.value.trim();
+  const password = loginPassword.value;
+  if(!email || !password){
+    loginError.textContent = 'Por favor ingresá correo y contraseña.';
+    loginError.style.display = 'block';
+    return;
+  }
+  loginSubmit.disabled = true;
+  loginSubmit.textContent = 'Verificando...';
+  loginError.style.display = 'none';
+  try {
+    await auth.signInWithEmailAndPassword(email, password);
+    loginDialog.close();
+  } catch(err) {
+    console.error(err);
+    let msg = 'Error al iniciar sesión: ' + err.message;
+    if(err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found'){
+      msg = 'Correo o contraseña incorrectos.';
+    } else if(err.code === 'auth/invalid-email'){
+      msg = 'El formato del correo es inválido.';
+    } else if(err.code === 'auth/too-many-requests'){
+      msg = 'Demasiados intentos fallidos. Intentá más tarde.';
+    }
+    loginError.textContent = msg;
+    loginError.style.display = 'block';
+  } finally {
+    loginSubmit.disabled = false;
+    loginSubmit.textContent = 'Ingresar';
+  }
+});
+
+// Atajo de teclado: Ctrl + Shift + A o Alt + A para abrir el login rápidamente
+window.addEventListener('keydown', (e) => {
+  if((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') || (e.altKey && e.key.toLowerCase() === 'a')){
+    e.preventDefault();
+    if(!isAdmin){
+      openAdminLogin();
+    }
+  }
 });
 
 // ====== COMPARTIR BUILD (?build=ID abre el detalle automáticamente) ======
@@ -699,7 +925,7 @@ let sharedBuildAutoOpened = false;
 
 function getShareUrl(buildId){
   const url = new URL(window.location.href);
-  url.searchParams.delete('admin'); // nunca compartir la clave de admin en el link
+  url.searchParams.delete('admin');
   url.searchParams.set('build', buildId);
   return url.toString();
 }
@@ -722,7 +948,6 @@ function itemColor(item){
 }
 
 function getBannerImages(b){
-  // Compatibilidad: banners viejos guardaban una sola imagen en "image"
   if(b.images && b.images.length) return b.images;
   return b.image ? [b.image] : [];
 }
@@ -750,7 +975,43 @@ const BG_PRESETS = [
   { id:'noir', label:'Noir puro', css:'#0c0a12' }
 ];
 
-// ====== IMAGE COMPRESSION ======
+// ====== GESTOR DE IMÁGENES (COMPRESIÓN, URLs DE PINTEREST/WEB Y PORTAPAPELES) ======
+function extractDirectImageUrl(url){
+  if(!url) return { isPinterestPage: false, raw: '' };
+  url = url.trim();
+  if(url.includes('pinterest.com/pin/') || url.includes('pin.it/')){
+    return { isPinterestPage: true, raw: url };
+  }
+  return { isPinterestPage: false, raw: url };
+}
+
+function processImageUrlOrData(src, maxDim, quality){
+  maxDim = maxDim || 800; quality = quality || 0.72;
+  return new Promise((resolve) => {
+    if(!src){ resolve(''); return; }
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      try {
+        let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+        if(w > h){ if(w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; } }
+        else { if(h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } catch(e) {
+        resolve(src);
+      }
+    };
+    img.onerror = () => {
+      resolve(src);
+    };
+    img.src = src;
+  });
+}
+
 function compressImage(file, maxDim, quality){
   maxDim = maxDim || 800; quality = quality || 0.72;
   return new Promise((resolve, reject) => {
@@ -774,28 +1035,120 @@ function compressImage(file, maxDim, quality){
   });
 }
 
-function wireImageInput(inputId, previewId, maxDim){
+function wireImageInput(inputId, previewId, maxDim, urlInputId, urlApplyBtnId){
   const input = document.getElementById(inputId);
   const preview = document.getElementById(previewId);
+  const urlInput = urlInputId ? document.getElementById(urlInputId) : null;
+  const urlBtn = urlApplyBtnId ? document.getElementById(urlApplyBtnId) : null;
   let dataUrl = '';
-  input.addEventListener('change', async () => {
-    const file = input.files[0];
-    if(!file) return;
-    preview.textContent = 'procesando...';
+
+  const applyUrl = async (rawUrl) => {
+    if(!rawUrl) return;
+    const check = extractDirectImageUrl(rawUrl);
+    if(check.isPinterestPage){
+      alert('💡 Tip para Pinterest:\nPara usar una imagen de Pinterest, hacé clic derecho en la imagen dentro de Pinterest y elegí "Copiar dirección de la imagen", o hacé "Copiar imagen" y pegala acá directamente con Ctrl + V.');
+      return;
+    }
+    preview.textContent = 'cargando...';
     try{
-      dataUrl = await compressImage(file, maxDim || 800, 0.72);
+      dataUrl = await processImageUrlOrData(check.raw, maxDim || 800, 0.72);
       preview.style.backgroundImage = `url(${dataUrl})`;
       preview.textContent = '';
+      if(urlInput) urlInput.value = '';
     }catch(err){
-      preview.textContent = 'error al procesar imagen';
+      preview.textContent = 'error al cargar imagen';
     }
-  });
+  };
+
+  if(input){
+    input.addEventListener('change', async () => {
+      const file = input.files[0];
+      if(!file) return;
+      preview.textContent = 'procesando...';
+      try{
+        dataUrl = await compressImage(file, maxDim || 800, 0.72);
+        preview.style.backgroundImage = `url(${dataUrl})`;
+        preview.textContent = '';
+      }catch(err){
+        preview.textContent = 'error al procesar imagen';
+      }
+    });
+  }
+
+  if(urlBtn && urlInput){
+    urlBtn.addEventListener('click', () => applyUrl(urlInput.value.trim()));
+    urlInput.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        applyUrl(urlInput.value.trim());
+      }
+    });
+  }
+
+  if(preview){
+    preview.addEventListener('dragover', (e) => { e.preventDefault(); preview.classList.add('drag-over'); });
+    preview.addEventListener('dragleave', () => preview.classList.remove('drag-over'));
+    preview.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      preview.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if(file && file.type.startsWith('image/')){
+        preview.textContent = 'procesando...';
+        dataUrl = await compressImage(file, maxDim || 800, 0.72);
+        preview.style.backgroundImage = `url(${dataUrl})`;
+        preview.textContent = '';
+      } else {
+        const text = e.dataTransfer.getData('text');
+        if(text && (text.startsWith('http://') || text.startsWith('https://') || text.startsWith('data:image'))){
+          applyUrl(text);
+        }
+      }
+    });
+  }
+
   return {
     get: () => dataUrl,
     set: (url) => { dataUrl = url || ''; preview.style.backgroundImage = url ? `url(${url})` : 'none'; preview.textContent = url ? '' : 'sin imagen'; },
-    reset: () => { dataUrl=''; input.value=''; preview.style.backgroundImage='none'; preview.textContent='sin imagen'; }
+    reset: () => { dataUrl=''; if(input) input.value=''; if(urlInput) urlInput.value=''; preview.style.backgroundImage='none'; preview.textContent='sin imagen'; },
+    applyUrl
   };
 }
+
+// ====== SOPORTE GLOBAL DE PEGAR CON PORTAPAPELES (CTRL + V) ======
+window.addEventListener('paste', async (e) => {
+  const activeEl = document.activeElement;
+  const isTypingText = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') && !activeEl.classList.contains('img-url-input');
+  
+  const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+  let imageFile = null;
+  for(let i = 0; i < items.length; i++){
+    if(items[i].type.indexOf('image') !== -1){
+      imageFile = items[i].getAsFile();
+      break;
+    }
+  }
+
+  if(imageFile){
+    e.preventDefault();
+    if(bannerDialog.open){
+      const previews = bannerDialog.querySelectorAll('.banner-image-preview');
+      const lastPreview = previews[previews.length - 1];
+      if(lastPreview && window._lastBannerApplyImg){
+        const compressed = await compressImage(imageFile, 900, 0.72);
+        window._lastBannerApplyImg(compressed);
+      }
+    } else if(buildDialog.open){
+      const compressed = await compressImage(imageFile, 700, 0.72);
+      uPortrait.set(compressed);
+    } else if(libDialog.open){
+      const compressed = await compressImage(imageFile, 600, 0.72);
+      lImg.set(compressed);
+    } else if(configDialog.open){
+      const compressed = await compressImage(imageFile, 1600, 0.72);
+      cBg.set(compressed);
+    }
+  }
+});
 
 // ====== TABS ======
 document.querySelectorAll('.tab').forEach(tab => {
@@ -854,7 +1207,7 @@ let searchQuery = { builds: '', library: '' };
 let sortOption = { active: 'default', upcoming: 'default', builds: 'recent' };
 let showOnlyFavorites = false;
 
-// ====== FAVORITOS (guardados en localStorage del navegador, no en Firestore) ======
+// ====== FAVORITOS (guardados en localStorage del navegador) ======
 const FAVORITES_KEY = 'zgg_favorite_builds';
 function getFavoriteIds(){
   try{ return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); }catch(e){ return []; }
@@ -964,7 +1317,6 @@ function escapeHtml(s){
 
 function formatStatsBlock(text){
   if(!text) return '';
-  // separa por saltos de línea, y si no hay saltos, intenta separar por punto/guion seguido de mayúscula
   let lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   if(lines.length <= 1){
     lines = text.split(/(?<=[a-záéíóúñ%])\s(?=(Disco|Slot|Artefacto|Sub ?stats?|Stats?|Arena|Cáliz|Corona|Copa|Reloj|Plumas|Flor)\b)/i)
@@ -981,9 +1333,8 @@ function formatStatsBlock(text){
   }).join('');
 }
 
-// ====== BUILD RENDER HELPERS (compartidos entre la card y el detalle ampliado) ======
+// ====== BUILD RENDER HELPERS ======
 function getWeaponsList(u){
-  // Compatibilidad: builds viejas guardaban un único campo de arma
   let weaponsList = u.weapons;
   if(!weaponsList || weaponsList.length === 0){
     weaponsList = (u.weaponName || u.weaponImage || u.weaponStats)
@@ -994,7 +1345,6 @@ function getWeaponsList(u){
 }
 
 function getTeamsList(u){
-  // Nuevo formato: u.teams = [{name, members:[...]}]. Compatibilidad con builds viejas: u.team = [miembros] (un solo equipo sin nombre).
   if(u.teams && u.teams.length) return u.teams;
   if(u.team && u.team.length) return [{ name:'', members:u.team }];
   return [];
@@ -1093,7 +1443,6 @@ function buildTargetStatsHtml(u){
 }
 
 function buildGeneralStatsHtml(u){
-  // Solo se usa en el detalle (no en la vista previa de la card)
   return u.generalStats ? `<div class="section-label">Stats generales</div><div class="target-stats">${formatStatsBlock(u.generalStats)}</div>` : '';
 }
 
@@ -1334,8 +1683,12 @@ db.collection('builds').onSnapshot(snap => {
 db.collection('library').onSnapshot(snap => {
   libraryData = snap.docs.map(d => ({ id:d.id, ...d.data() }));
   renderLibrary();
-  refreshOpenBuildSelects();
+  refreshOpenBuilds();
 }, err => console.error(err));
+
+function refreshOpenBuilds(){
+  // Helper placeholder
+}
 
 db.collection('config').doc('site').onSnapshot(doc => {
   const data = doc.exists ? doc.data() : {};
@@ -1373,15 +1726,49 @@ function addBannerImageRow(existingUrl){
   row.className = 'piece-row';
   row.innerHTML = `
     <button type="button" class="remove-piece">✕</button>
+    <div class="img-url-row">
+      <input type="text" class="img-url-input banner-url-input" placeholder="Pegar URL directa de imagen o Pinterest...">
+      <button type="button" class="img-url-btn banner-url-btn">Cargar URL</button>
+    </div>
     <input type="file" class="banner-image-file" accept="image/*">
     <div class="preview banner-image-preview">sin imagen</div>
+    <div class="img-paste-hint">💡 Subí archivo, pegá URL o pegá imagen con Ctrl+V</div>
   `;
   container.appendChild(row);
 
   const fileInput = row.querySelector('.banner-image-file');
+  const urlInput = row.querySelector('.banner-url-input');
+  const urlBtn = row.querySelector('.banner-url-btn');
   const preview = row.querySelector('.banner-image-preview');
   let imgData = existingUrl || '';
   if(imgData){ preview.style.backgroundImage = `url(${imgData})`; preview.textContent = ''; }
+
+  const setImg = (url) => {
+    imgData = url || '';
+    preview.style.backgroundImage = url ? `url(${url})` : 'none';
+    preview.textContent = url ? '' : 'sin imagen';
+  };
+
+  const applyUrl = async (rawUrl) => {
+    if(!rawUrl) return;
+    const check = extractDirectImageUrl(rawUrl);
+    if(check.isPinterestPage){
+      alert('💡 Tip para Pinterest:\nHacé clic derecho en la imagen dentro de Pinterest y elegí "Copiar dirección de la imagen", o copiala y pegala con Ctrl+V.');
+      return;
+    }
+    preview.textContent = 'cargando...';
+    try{
+      imgData = await processImageUrlOrData(check.raw, 900, 0.72);
+      preview.style.backgroundImage = `url(${imgData})`;
+      preview.textContent = '';
+      urlInput.value = '';
+    }catch(err){
+      preview.textContent = 'error al cargar imagen';
+    }
+  };
+
+  urlBtn.addEventListener('click', () => applyUrl(urlInput.value.trim()));
+  urlInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); applyUrl(urlInput.value.trim()); } });
 
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files[0];
@@ -1395,6 +1782,24 @@ function addBannerImageRow(existingUrl){
       preview.textContent = 'error al procesar imagen';
     }
   });
+
+  preview.addEventListener('dragover', (e) => { e.preventDefault(); preview.classList.add('drag-over'); });
+  preview.addEventListener('dragleave', () => preview.classList.remove('drag-over'));
+  preview.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    preview.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if(file && file.type.startsWith('image/')){
+      imgData = await compressImage(file, 900, 0.72);
+      preview.style.backgroundImage = `url(${imgData})`;
+      preview.textContent = '';
+    } else {
+      const text = e.dataTransfer.getData('text');
+      if(text) applyUrl(text);
+    }
+  });
+
+  window._lastBannerApplyImg = setImg;
 
   row.querySelector('.remove-piece').addEventListener('click', () => {
     row.remove();
@@ -1489,7 +1894,225 @@ function toLocalInput(ts){
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-// ====== LIBRARY HELPERS (used by build dialog) ======
+// ====== SINCRONIZACIÓN DE BANNERS (BannerFetcher) ======
+// NOTA IMPORTANTE: la búsqueda automática consulta wikis públicas (Fandom) directamente
+// desde el navegador, usando la API de MediaWiki con "origin=*" (que sí permite CORS).
+// No existe una API unificada y 100% confiable con fechas oficiales de banners para
+// los 4 juegos, así que este módulo es un "mejor esfuerzo": intenta encontrar tablas de
+// banners en la wiki y extraer nombre / fechas / imagen con patrones genéricos. Si la
+// wiki cambia su formato o el juego no tiene una página clara, la búsqueda puede no
+// encontrar nada — para esos casos siempre queda disponible el modo manual (pegar JSON),
+// que es 100% confiable porque los datos los provee la persona administradora.
+const BANNER_WIKI_SOURCES = {
+  genshin: { host: 'genshin-impact.fandom.com', page: 'Wish/Character_Event_Wish' },
+  hsr:     { host: 'honkai-star-rail.fandom.com', page: 'Warp/Character_Event_Warp' },
+  zzz:     { host: 'zenless-zone-zero.fandom.com', page: 'Signal_Search/Exclusive_Channel' },
+  uma:     { host: null, page: null } // Umamusume no tiene un banner tracker de wiki confiable conocido; usar modo manual.
+};
+
+const BannerFetcher = {
+  async fetchForGame(gameKey){
+    const source = BANNER_WIKI_SOURCES[gameKey];
+    if(!source || !source.host){
+      throw new Error('No hay una fuente automática configurada para este juego todavía. Usá el modo manual (pegar JSON).');
+    }
+    const apiUrl = `https://${source.host}/api.php?action=parse&page=${encodeURIComponent(source.page)}&prop=text&format=json&origin=*`;
+    let res;
+    try{
+      res = await fetch(apiUrl);
+    }catch(err){
+      throw new Error('No se pudo conectar con la wiki (' + source.host + '). Puede que el navegador esté bloqueando la solicitud (CORS) o que no haya conexión.');
+    }
+    if(!res.ok) throw new Error('La wiki respondió con un error (HTTP ' + res.status + ').');
+    const data = await res.json();
+    if(data.error) throw new Error('Error de la wiki: ' + (data.error.info || data.error.code));
+    const html = data.parse && data.parse.text && data.parse.text['*'];
+    if(!html) throw new Error('La wiki no devolvió contenido para esa página.');
+    return this._parseBannersFromHtml(html);
+  },
+
+  _parseBannersFromHtml(html){
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const results = [];
+    const dateLikeRe = /\b\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\b|\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}\b/i;
+    doc.querySelectorAll('table').forEach(table => {
+      const rows = table.querySelectorAll('tr');
+      rows.forEach(row => {
+        const rowText = row.textContent || '';
+        const dateMatches = rowText.match(new RegExp(dateLikeRe.source, 'gi')) || [];
+        if(dateMatches.length < 2) return; // necesitamos al menos fecha de inicio y fin
+        const img = row.querySelector('img');
+        const imageUrl = img ? (img.getAttribute('data-src') || img.getAttribute('src') || '') : '';
+        const linkOrBold = row.querySelector('a[title], b, th');
+        const name = linkOrBold ? linkOrBold.textContent.trim() : rowText.trim().slice(0, 40);
+        const start = this._normalizeDate(dateMatches[0]);
+        const end = this._normalizeDate(dateMatches[1]);
+        if(name && start && end){
+          results.push({ name, start, end, image: imageUrl && imageUrl.startsWith('http') ? imageUrl : '', notes: '' });
+        }
+      });
+    });
+    // de-duplicar por nombre+fechas
+    const seen = new Set();
+    return results.filter(r => {
+      const key = r.name + r.start + r.end;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 20);
+  },
+
+  _normalizeDate(raw){
+    if(!raw) return '';
+    const d = new Date(raw);
+    if(isNaN(d.getTime())) return '';
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  }
+};
+
+const syncPreviewDialog = document.getElementById('syncPreviewDialog');
+const syncStatus = document.getElementById('syncStatus');
+const syncResultsContainer = document.getElementById('syncResultsContainer');
+let syncCurrentResults = [];
+
+function setSyncStatus(text, kind){
+  syncStatus.textContent = text;
+  syncStatus.className = 'sync-status' + (kind ? ' ' + kind : '');
+}
+
+function renderSyncResults(){
+  syncResultsContainer.innerHTML = '';
+  if(syncCurrentResults.length === 0){
+    syncResultsContainer.innerHTML = '<div class="sync-empty">Todavía no hay banners para previsualizar.</div>';
+    return;
+  }
+  const wrap = document.createElement('div');
+  wrap.className = 'sync-results';
+  syncCurrentResults.forEach((r, idx) => {
+    const row = document.createElement('div');
+    row.className = 'sync-result-row';
+    row.innerHTML = `
+      <input type="checkbox" class="sync-check" data-idx="${idx}" checked>
+      <div class="sync-result-thumb" style="${r.image ? `background-image:url(${r.image})` : ''}"></div>
+      <div class="sync-result-fields">
+        <input class="sync-f-name full-width" data-idx="${idx}" placeholder="Nombre" value="${escapeHtml(r.name||'')}">
+        <input class="sync-f-start" type="date" data-idx="${idx}" value="${r.start||''}">
+        <input class="sync-f-end" type="date" data-idx="${idx}" value="${r.end||''}">
+        <input class="sync-f-image full-width" data-idx="${idx}" placeholder="URL de imagen (opcional)" value="${escapeHtml(r.image||'')}">
+        <textarea class="sync-f-notes full-width" data-idx="${idx}" placeholder="Notas / rate-up">${escapeHtml(r.notes||'')}</textarea>
+      </div>
+    `;
+    wrap.appendChild(row);
+  });
+  syncResultsContainer.appendChild(wrap);
+  wrap.querySelectorAll('input, textarea').forEach(el => {
+    el.addEventListener('input', () => {
+      const idx = Number(el.dataset.idx);
+      const item = syncCurrentResults[idx];
+      if(!item) return;
+      if(el.classList.contains('sync-f-name')) item.name = el.value;
+      if(el.classList.contains('sync-f-start')) item.start = el.value;
+      if(el.classList.contains('sync-f-end')) item.end = el.value;
+      if(el.classList.contains('sync-f-image')){ item.image = el.value; row.querySelector('.sync-result-thumb').style.backgroundImage = el.value ? `url(${el.value})` : 'none'; }
+      if(el.classList.contains('sync-f-notes')) item.notes = el.value;
+    });
+  });
+}
+
+function openSyncDialog(prefillGame){
+  syncCurrentResults = [];
+  renderSyncResults();
+  setSyncStatus('Elegí un juego y probá la búsqueda automática, o pegá los datos manualmente abajo. La búsqueda automática es experimental: depende de que la wiki del juego esté disponible desde el navegador y puede fallar — si eso pasa, usá el modo manual, que siempre funciona.');
+  document.getElementById('syncPasteInput').value = '';
+  if(prefillGame) document.getElementById('syncGame').value = prefillGame;
+  syncPreviewDialog.showModal();
+}
+
+document.getElementById('openSyncBtn')?.addEventListener('click', () => openSyncDialog());
+document.getElementById('openSyncBtnUpcoming')?.addEventListener('click', () => openSyncDialog());
+document.getElementById('bannerSyncBtn')?.addEventListener('click', () => {
+  openSyncDialog(document.getElementById('bGame').value);
+});
+document.getElementById('syncCancel').addEventListener('click', () => syncPreviewDialog.close());
+
+document.getElementById('syncAutoBtn').addEventListener('click', async () => {
+  const game = document.getElementById('syncGame').value;
+  setSyncStatus('Buscando banners para ' + getGameMeta(game).label + '...');
+  try{
+    const results = await BannerFetcher.fetchForGame(game);
+    if(results.length === 0){
+      setSyncStatus('No se encontraron banners con fechas reconocibles en la wiki. Probá el modo manual (pegar JSON) — es más confiable.', 'error');
+      return;
+    }
+    syncCurrentResults = results;
+    renderSyncResults();
+    setSyncStatus(`Se encontraron ${results.length} banner(s) — revisá y corregí los datos antes de importar, ya que la extracción automática puede tener errores.`, 'ok');
+  }catch(err){
+    setSyncStatus('No se pudo completar la búsqueda automática: ' + err.message, 'error');
+  }
+});
+
+document.getElementById('syncParsePasteBtn').addEventListener('click', () => {
+  const raw = document.getElementById('syncPasteInput').value.trim();
+  if(!raw){ setSyncStatus('Pegá primero una lista en formato JSON.', 'error'); return; }
+  try{
+    const parsed = JSON.parse(raw);
+    if(!Array.isArray(parsed)) throw new Error('El JSON debe ser una lista (array) de banners.');
+    const normalized = parsed.map(item => ({
+      name: item.name || '',
+      start: item.start || '',
+      end: item.end || '',
+      image: item.image || '',
+      notes: item.notes || ''
+    }));
+    syncCurrentResults = normalized;
+    renderSyncResults();
+    setSyncStatus(`Se cargaron ${normalized.length} banner(s) desde el texto pegado — revisá los datos antes de importar.`, 'ok');
+  }catch(err){
+    setSyncStatus('El JSON pegado no es válido: ' + err.message, 'error');
+  }
+});
+
+document.getElementById('syncImportBtn').addEventListener('click', async () => {
+  const game = document.getElementById('syncGame').value;
+  const checks = syncResultsContainer.querySelectorAll('.sync-check:checked');
+  if(checks.length === 0){ setSyncStatus('No hay ningún banner seleccionado para importar.', 'error'); return; }
+  const meta = getGameMeta(game);
+  let imported = 0;
+  for(const chk of checks){
+    const idx = Number(chk.dataset.idx);
+    const item = syncCurrentResults[idx];
+    if(!item || !item.name || !item.start || !item.end) continue;
+    const startTs = new Date(item.start + 'T00:00:00').getTime();
+    const endTs = new Date(item.end + 'T23:59:59').getTime();
+    if(isNaN(startTs) || isNaN(endTs)) continue;
+    let finalImage = item.image || '';
+    if(finalImage){
+      try{ finalImage = await processImageUrlOrData(finalImage, 900, 0.72); }catch(e){ /* usar la URL tal cual si falla */ }
+    }
+    try{
+      await db.collection('banners').add({
+        game,
+        color: meta.hex,
+        name: item.name,
+        images: finalImage ? [finalImage] : [],
+        image: finalImage,
+        interval: 10,
+        start: startTs,
+        end: endTs,
+        notes: item.notes || ''
+      });
+      imported++;
+    }catch(err){ console.error(err); }
+  }
+  setSyncStatus(`Se importaron ${imported} de ${checks.length} banner(s) seleccionados.`, imported > 0 ? 'ok' : 'error');
+  if(imported > 0){
+    setTimeout(() => syncPreviewDialog.close(), 1200);
+  }
+});
+
+// ====== LIBRARY HELPERS ======
 const LIB_PICKER_TITLES = { weapon: 'Elegir arma de biblioteca', piece: 'Elegir pieza / disco de biblioteca', character: 'Elegir personaje de biblioteca' };
 
 const libPickerDialog = document.getElementById('libPickerDialog');
@@ -1555,11 +2178,6 @@ function renderLibPickerGrid(query){
 libPickerSearch.addEventListener('input', () => renderLibPickerGrid(libPickerSearch.value));
 document.getElementById('libPickerCancel').addEventListener('click', () => libPickerDialog.close());
 
-function refreshOpenBuildSelects(){
-  // La biblioteca se consulta en vivo cada vez que se abre el picker (openLibraryPicker),
-  // así que no hace falta refrescar nada mientras el diálogo de build está abierto.
-}
-
 async function saveToLibrary(type, name, image, stats){
   if(!name){ alert('Poné un nombre antes de guardar en la biblioteca.'); return; }
   try{
@@ -1573,20 +2191,19 @@ async function saveToLibrary(type, name, image, stats){
 
 // ====== BUILD DIALOG ======
 const buildDialog = document.getElementById('buildDialog');
-const uPortrait = wireImageInput('uPortraitFile', 'uPortraitPreview', 700);
+const uPortrait = wireImageInput('uPortraitFile', 'uPortraitPreview', 700, 'uPortraitUrl', 'uPortraitUrlBtn');
 let editingBuildId = null;
 let pieceHandlers = [];
 let teamHandlers = [];
 let weaponHandlers = [];
 
 document.getElementById('uGame').addEventListener('change', () => {
-  refreshOpenBuildSelects();
   if(!editingBuildId){
     document.getElementById('uColor').value = getGameMeta(document.getElementById('uGame').value).hex;
   }
 });
 
-// ---- Habilidades (orden = prioridad, reordenable con flechas) ----
+// ---- Habilidades ----
 function addAbilityRow(existing){
   const container = document.getElementById('abilitiesContainer');
   const row = document.createElement('div');
@@ -1596,7 +2213,7 @@ function addAbilityRow(existing){
       <button type="button" class="ability-up" title="subir prioridad">▲</button>
       <button type="button" class="ability-down" title="bajar prioridad">▼</button>
     </div>
-    <div class="ability-thumb-btn"><span class="ability-thumb-plus">+</span></div>
+    <div class="ability-thumb-btn" title="Clic para subir archivo o clic derecho para pegar URL"><span class="ability-thumb-plus">+</span></div>
     <input type="file" class="ability-file" accept="image/*" style="display:none;">
     <input class="ability-name" placeholder="Nombre (opcional si hay imagen)">
     <input class="ability-level" placeholder="Nivel objetivo (ej. 10)">
@@ -1621,6 +2238,16 @@ function addAbilityRow(existing){
     }
   }
   thumbBtn.addEventListener('click', () => fileInput.click());
+  thumbBtn.addEventListener('contextmenu', async (e) => {
+    e.preventDefault();
+    const url = prompt('Pegar URL de la imagen de habilidad:');
+    if(url){
+      abilityImg = await processImageUrlOrData(url.trim(), 300, 0.7);
+      row._abilityImage = abilityImg;
+      refreshThumb();
+    }
+  });
+
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files[0];
     if(!file) return;
@@ -1654,13 +2281,17 @@ function addWeaponRow(existing){
   row.className = 'piece-row';
   row.innerHTML = `
     <button type="button" class="remove-piece" data-idx="${idx}">✕</button>
-    <div class="field"><label style="color:var(--gold);">${idx===0 ? 'Arma principal (se muestra grande)' : 'Arma alternativa'}</label></div>
+    <div class="field"><label style="color:var(--gold);">${idx===0 ? 'Arma principal' : 'Arma alternativa'}</label></div>
     <div class="field">
       <button type="button" class="lib-pick-btn weapon-pick-btn">
         <span class="lib-pick-thumb"></span>
         <span class="lib-pick-label">Elegir de biblioteca (o cargar una nueva abajo)</span>
         <span class="lib-pick-icon">🔍</span>
       </button>
+    </div>
+    <div class="img-url-row">
+      <input type="text" class="img-url-input weapon-url-input" placeholder="Pegar URL directa de arma o Pinterest...">
+      <button type="button" class="img-url-btn weapon-url-btn">Cargar URL</button>
     </div>
     <div class="item-row-grid">
       <div class="thumb-col">
@@ -1679,6 +2310,8 @@ function addWeaponRow(existing){
 
   const pickBtn = row.querySelector('.weapon-pick-btn');
   const fileInput = row.querySelector('.weapon-file');
+  const urlInput = row.querySelector('.weapon-url-input');
+  const urlBtn = row.querySelector('.weapon-url-btn');
   const preview = row.querySelector('.weapon-preview');
   let weaponImg = existing ? existing.image || '' : '';
   let weaponLibraryId = existing ? existing.libraryId || '' : '';
@@ -1703,6 +2336,27 @@ function addWeaponRow(existing){
     else { label.textContent = 'Elegir de biblioteca (o cargar una nueva abajo)'; pickBtn.classList.remove('has-selection'); }
   }
 
+  const applyUrl = async (rawUrl) => {
+    if(!rawUrl) return;
+    const check = extractDirectImageUrl(rawUrl);
+    if(check.isPinterestPage){
+      alert('💡 Tip: Copiá la dirección directa de la imagen en Pinterest o pegala con Ctrl+V.');
+      return;
+    }
+    preview.textContent = 'cargando...';
+    try{
+      weaponImg = await processImageUrlOrData(check.raw, 600, 0.72);
+      weaponLibraryId = '';
+      preview.style.backgroundImage = `url(${weaponImg})`;
+      preview.textContent = '';
+      urlInput.value = '';
+      updatePickBtn();
+    }catch(err){ preview.textContent = 'error al cargar'; }
+  };
+
+  urlBtn.addEventListener('click', () => applyUrl(urlInput.value.trim()));
+  urlInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); applyUrl(urlInput.value.trim()); } });
+
   pickBtn.addEventListener('click', () => {
     openLibraryPicker('weapon', () => document.getElementById('uGame').value, applyPicked);
   });
@@ -1712,7 +2366,7 @@ function addWeaponRow(existing){
     if(!file) return;
     preview.textContent = 'procesando...';
     weaponImg = await compressImage(file, 600, 0.72);
-    weaponLibraryId = ''; // imagen propia, ya no está atada a la biblioteca
+    weaponLibraryId = '';
     preview.style.backgroundImage = `url(${weaponImg})`;
     preview.textContent = '';
     updatePickBtn();
@@ -1761,6 +2415,10 @@ function addPieceRow(existing){
         <span class="lib-pick-icon">🔍</span>
       </button>
     </div>
+    <div class="img-url-row">
+      <input type="text" class="img-url-input piece-url-input" placeholder="Pegar URL directa de pieza o Pinterest...">
+      <button type="button" class="img-url-btn piece-url-btn">Cargar URL</button>
+    </div>
     <div class="item-row-grid">
       <div class="thumb-col">
         <input type="file" class="piece-file" accept="image/*" style="width:104px; font-size:.65rem;">
@@ -1778,6 +2436,8 @@ function addPieceRow(existing){
 
   const pickBtn = row.querySelector('.piece-pick-btn');
   const fileInput = row.querySelector('.piece-file');
+  const urlInput = row.querySelector('.piece-url-input');
+  const urlBtn = row.querySelector('.piece-url-btn');
   const preview = row.querySelector('.piece-preview');
   let pieceData = existing ? existing.image || '' : '';
   let pieceLibraryId = existing ? existing.libraryId || '' : '';
@@ -1802,6 +2462,27 @@ function addPieceRow(existing){
     else { label.textContent = 'Elegir de biblioteca (o cargar una nueva abajo)'; pickBtn.classList.remove('has-selection'); }
   }
 
+  const applyUrl = async (rawUrl) => {
+    if(!rawUrl) return;
+    const check = extractDirectImageUrl(rawUrl);
+    if(check.isPinterestPage){
+      alert('💡 Tip: Copiá la dirección directa de la imagen en Pinterest o pegala con Ctrl+V.');
+      return;
+    }
+    preview.textContent = 'cargando...';
+    try{
+      pieceData = await processImageUrlOrData(check.raw, 500, 0.7);
+      pieceLibraryId = '';
+      preview.style.backgroundImage = `url(${pieceData})`;
+      preview.textContent = '';
+      urlInput.value = '';
+      updatePickBtn();
+    }catch(err){ preview.textContent = 'error al cargar'; }
+  };
+
+  urlBtn.addEventListener('click', () => applyUrl(urlInput.value.trim()));
+  urlInput.addEventListener('keydown', (e) => { if(e.key === 'Enter'){ e.preventDefault(); applyUrl(urlInput.value.trim()); } });
+
   pickBtn.addEventListener('click', () => {
     openLibraryPicker('piece', () => document.getElementById('uGame').value, applyPicked);
   });
@@ -1811,7 +2492,7 @@ function addPieceRow(existing){
     if(!file) return;
     preview.textContent = 'procesando...';
     pieceData = await compressImage(file, 500, 0.7);
-    pieceLibraryId = ''; // imagen propia, ya no está atada a la biblioteca
+    pieceLibraryId = '';
     preview.style.backgroundImage = `url(${pieceData})`;
     preview.textContent = '';
     updatePickBtn();
@@ -1846,15 +2527,14 @@ function addPieceRow(existing){
 
 document.getElementById('addPieceBtn').addEventListener('click', () => addPieceRow());
 
-// Cada "team block" es un equipo con nombre propio y una fila de cuadros (slots) para sus integrantes.
-// Los slots se acomodan con flexbox, así que 3, 4 o los que sean quedan bien acomodados sin espacios muertos.
+// Cada "team block" es un equipo con nombre propio y una fila de cuadros para sus integrantes
 function addTeamSlot(slotsContainer, slotHandlers, existing){
   const idx = slotHandlers.length;
   const slot = document.createElement('div');
   slot.className = 'team-slot';
   slot.innerHTML = `
     <button type="button" class="remove-slot">✕</button>
-    <div class="slot-thumb-btn"><span class="slot-plus">+</span></div>
+    <div class="slot-thumb-btn" title="Clic para elegir de biblioteca o clic derecho para pegar URL"><span class="slot-plus">+</span></div>
     <input type="file" class="slot-file" accept="image/*" style="display:none;">
     <input class="slot-name" placeholder="Nombre">
     <input class="slot-notes" placeholder="rol (opc.)">
@@ -1885,8 +2565,15 @@ function addTeamSlot(slotsContainer, slotHandlers, existing){
       refreshThumb();
     });
   });
-  // doble click / long usage: click derecho no aplica en mobile, así que agregamos un pequeño acceso para subir imagen propia
-  thumbBtn.addEventListener('contextmenu', (e) => { e.preventDefault(); fileInput.click(); });
+
+  thumbBtn.addEventListener('contextmenu', async (e) => {
+    e.preventDefault();
+    const url = prompt('Pegar URL directa de imagen de personaje:');
+    if(url){
+      slotImg = await processImageUrlOrData(url.trim(), 400, 0.7);
+      refreshThumb();
+    }
+  });
 
   fileInput.addEventListener('change', async () => {
     const file = fileInput.files[0];
@@ -1998,7 +2685,6 @@ document.getElementById('buildSave').addEventListener('click', async () => {
   };
   try{
     if(editingBuildId){
-      // limpia el campo viejo "team" (formato anterior) si existía, ya migramos a "teams"
       await db.collection('builds').doc(editingBuildId).update({ ...payload, updatedAt: Date.now(), team: firebase.firestore.FieldValue.delete() });
     } else {
       payload.createdAt = Date.now();
@@ -2030,7 +2716,6 @@ document.addEventListener('click', (e) => {
     teamHandlers = [];
     const abilitiesList = u.abilities || [];
     if(abilitiesList.length === 0){ addAbilityRow(); } else { abilitiesList.forEach(a => addAbilityRow(a)); }
-    // Compatibilidad con builds viejas que tenían un único campo de arma
     let weaponsList = u.weapons;
     if(!weaponsList || weaponsList.length === 0){
       if(u.weaponName || u.weaponImage || u.weaponStats){
@@ -2054,7 +2739,7 @@ document.addEventListener('click', (e) => {
 
 // ====== LIBRARY DIALOG ======
 const libDialog = document.getElementById('libDialog');
-const lImg = wireImageInput('lImageFile', 'lImagePreview', 600);
+const lImg = wireImageInput('lImageFile', 'lImagePreview', 600, 'lImageUrl', 'lImageUrlBtn');
 let editingLibId = null;
 let editingLibType = 'weapon';
 
@@ -2112,7 +2797,7 @@ document.addEventListener('click', (e) => {
 
 // ====== CONFIG DIALOG ======
 const configDialog = document.getElementById('configDialog');
-const cBg = wireImageInput('cBgFile', 'cBgPreview', 1600);
+const cBg = wireImageInput('cBgFile', 'cBgPreview', 1600, 'cBgUrl', 'cBgUrlBtn');
 let selectedBgType = 'preset';
 let selectedPreset = 'aubergine';
 
