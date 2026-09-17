@@ -44,29 +44,43 @@ function fetchJson(url) {
   });
 }
 
-// Extrae stats / builds básicas consultando la página individual del personaje
-async function fetchCharacterDetails(host, name) {
+// Consulta el código fuente wikitext de la página del personaje
+async function fetchCharacterWikitext(host, name, game) {
   try {
-    const url = `https://${host}/api.php?action=parse&page=${encodeURIComponent(name)}&prop=text&format=json`;
+    const url = `https://${host}/api.php?action=parse&page=${encodeURIComponent(name)}&prop=wikitext&format=json`;
     const data = await fetchJson(url);
-    const html = data?.parse?.text?.['*'] || '';
+    const wikitext = data?.parse?.wikitext?.['*'] || '';
 
-    // Buscar fragmentos o texto relevante sobre Stats / Artefactos
-    if (!html) return "Stats por definir.";
+    if (!wikitext) return getFallbackStats(game);
 
-    // Extraer texto limpio omitiendo etiquetas HTML
-    const cleanText = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
-
-    // Intenta localizar secciones clave como 'Build', 'Stats' o 'Relics'
-    const match = cleanText.match(/(?:Recommended Stats|Build|Stat Priority|Stats)[:\s]+([^.]+)/i);
-    if (match && match[1]) {
-      return match[1].trim().substring(0, 150);
+    // Extraer parámetros habituales de equipamiento según el juego
+    let extracted = [];
+    
+    // Buscar artefactos/reliquias/stats clave en las plantillas del wikitext
+    const lines = wikitext.split('\n');
+    for (const line of lines) {
+      if (line.includes('relic') || line.includes('artifact') || line.includes('stats') || line.includes('body') || line.includes('feet')) {
+        const parts = line.split('=');
+        if (parts.length > 1 && parts[1].trim()) {
+          extracted.push(parts[1].replace(/[\[\]\{\}]/g, '').trim());
+        }
+      }
     }
 
-    return "Ataque % / Prob. Crítica / Daño Crítico";
+    if (extracted.length > 0) {
+      return extracted.slice(0, 4).join(' | ');
+    }
+
+    return getFallbackStats(game);
   } catch {
-    return "Ataque % / Prob. Crítica / Daño Crítico";
+    return getFallbackStats(game);
   }
+}
+
+function getFallbackStats(game) {
+  if (game === 'genshin') return 'Reloj: ATQ% / Vida% • Copa: Bono Daño • Corona: Prob./Daño CRIT';
+  if (game === 'hsr') return 'Pecho: Prob./Daño CRIT • Botas: VEL / ATQ% • Esfera: Bono Daño • Cuerda: REC / ATQ%';
+  return 'Disco 4: Prob./Daño CRIT • Disco 5: Bono Daño • Disco 6: ATQ% / REC';
 }
 
 async function getCategoryMembers(host, category) {
@@ -102,13 +116,12 @@ async function fetchAllCharacters() {
   const allList = [];
 
   for (const source of WIKI_SOURCES) {
-    console.log(`🌐 Consultando Fandom de ${source.game.toUpperCase()}...`);
+    console.log(`🌐 Extrayendo personajes y stats de ${source.game.toUpperCase()}...`);
     const names = await getCategoryMembers(source.host, source.category);
-    console.log(`  └ ${names.length} personajes encontrados.`);
+    console.log(`  └ ${names.length} personajes encontrados. Obteniendo stats individuales...`);
 
     for (const name of names) {
-      // Obtener detalles de stats para cada personaje
-      const targetStats = await fetchCharacterDetails(source.host, name);
+      const targetStats = await fetchCharacterWikitext(source.host, name, source.game);
       allList.push({
         name,
         game: source.game,
@@ -121,16 +134,13 @@ async function fetchAllCharacters() {
 }
 
 async function syncBuilds() {
-  console.log("🔄 Iniciando importación masiva en Firestore...");
+  console.log("🔄 Iniciando sincronización de builds con stats...");
 
   try {
     const fetchedBuilds = await fetchAllCharacters();
-    console.log(`📊 Total acumulado de personajes a procesar: ${fetchedBuilds.length}`);
+    console.log(`📊 Total acumulado de personajes a actualizar: ${fetchedBuilds.length}`);
 
-    if (fetchedBuilds.length === 0) {
-      console.log("⚠️ No se obtuvieron personajes.");
-      return;
-    }
+    if (fetchedBuilds.length === 0) return;
 
     const snapshot = await db.collection('builds').get();
     const existingBuildsMap = new Map();
@@ -149,6 +159,7 @@ async function syncBuilds() {
 
       if (existingBuildsMap.has(key)) {
         const existing = existingBuildsMap.get(key);
+        // Actualiza targetStats con el nuevo formato extraído
         await db.collection('builds').doc(existing.id).update({
           targetStats: item.targetStats,
           updatedAt: Date.now()
