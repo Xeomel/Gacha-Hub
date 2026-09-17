@@ -1,3 +1,14 @@
 {
-  "pendingChanges": []
+  "pendingChanges": [
+    {
+      "characterName": "Furina",
+      "reason": "Nuevo set de artefactos recomendado para la versión actual.",
+      "currentBuild": "Disco 4: Vida %\nDisco 5: Bono Daño Hydro\nDisco 6: Recarga de Energía",
+      "suggestedBuild": {
+        "Disco 4": { "name": "Disco 4", "validStats": ["Prob. Crítica", "Daño Crítico"] },
+        "Disco 5": { "name": "Disco 5", "validStats": ["Bono Daño Hydro", "Vida %"] },
+        "Disco 6": { "name": "Disco 6", "validStats": ["Recarga de Energía"] }
+      }
+    }
+  ]
 }
