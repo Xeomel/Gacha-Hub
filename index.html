@@ -378,9 +378,6 @@
       overflow: hidden;
       position: relative;
       transition: transform .18s ease, border-color .15s ease, box-shadow .2s ease;
-    }
-
-    .card {
       border-left: 4px solid var(--game-color, var(--edge));
     }
 
@@ -3843,47 +3840,103 @@
     let teamHandlers = [];
     let weaponHandlers = [];
 
-    // ====== CARGA Y AUTOCOMPLETADO DE EQUIPAMIENTO DE LA BIBLIOTECA JSON ======
-    let equipmentCatalog = null;
+    // ====== CARGA AUTO-ACTUALIZABLE DE EQUIPAMIENTO (LOCAL + API + FIREBASE) ======
+    let equipmentCatalog = {
+      genshin: { weapons: [], artifacts: [] },
+      hsr: { lightCones: [], relics: [], planarOrnaments: [] },
+      zzz: { wEngines: [], driveDiscs: [] },
+      uma: { weapons: [], artifacts: [] }
+    };
 
     document.addEventListener('DOMContentLoaded', async () => {
+      // 1. Cargar el JSON local
       try {
-        const res = await fetch('data/equipment-database.json');
+        const res = await fetch('data/equipment-library.json');
         if (res.ok) {
-          equipmentCatalog = await res.json();
-          console.log('✅ Base de equipamiento cargada correctamente.');
+          const localData = await res.json();
+          equipmentCatalog = { ...equipmentCatalog, ...localData };
+          console.log('✅ Archivo JSON local cargado.');
         }
       } catch (err) {
-        console.warn('No se pudo cargar data/equipment-database.json:', err.message);
+        console.warn('No se pudo cargar data/equipment-library.json:', err.message);
+      }
+
+      // 2. Obtener armas de Genshin Impact vía API
+      try {
+        const gRes = await fetch('https://genshin-app-api.vercel.app/api/weapons');
+        if (gRes.ok) {
+          const gWeapons = await gRes.json();
+          const onlineWeapons = gWeapons.map(w => w.name || w);
+          equipmentCatalog.genshin.weapons = Array.from(new Set([
+            ...(equipmentCatalog.genshin.weapons || []),
+            ...onlineWeapons
+          ]));
+          console.log('✅ Armas de Genshin actualizadas automáticamente.');
+        }
+      } catch (e) {
+        console.log('Usando datos locales para Genshin.');
+      }
+
+      // 3. Obtener Conos de Luz de HSR vía API
+      try {
+        const hsrRes = await fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json');
+        if (hsrRes.ok) {
+          const hsrConesObj = await hsrRes.json();
+          const onlineCones = Object.values(hsrConesObj).map(c => c.name);
+          equipmentCatalog.hsr.lightCones = Array.from(new Set([
+            ...(equipmentCatalog.hsr.lightCones || []),
+            ...onlineCones
+          ]));
+          console.log('✅ Conos de luz de HSR actualizados automáticamente.');
+        }
+      } catch (e) {
+        console.log('Usando datos locales para HSR.');
       }
     });
 
     function updateEquipmentDatalists(game) {
-      if (!equipmentCatalog || !equipmentCatalog[game]) return;
-
       const weaponsDatalist = document.getElementById('weaponsOptions');
       const piecesDatalist = document.getElementById('piecesOptions');
-      const gameData = equipmentCatalog[game];
+      if (!weaponsDatalist || !piecesDatalist) return;
 
-      if (weaponsDatalist) {
-        weaponsDatalist.innerHTML = '';
-        const weapons = gameData.weapons || gameData.lightCones || gameData.wEngines || [];
-        weapons.forEach(item => {
-          const option = document.createElement('option');
-          option.value = typeof item === 'string' ? item : item.name;
-          weaponsDatalist.appendChild(option);
-        });
+      weaponsDatalist.innerHTML = '';
+      piecesDatalist.innerHTML = '';
+
+      const namesWeapons = new Set();
+      const namesPieces = new Set();
+
+      // Cargar datos unificados del JSON y las APIs públicas
+      if (equipmentCatalog && equipmentCatalog[game]) {
+        const gameData = equipmentCatalog[game];
+        const jsonWeapons = gameData.weapons || gameData.lightCones || gameData.wEngines || [];
+        const jsonPieces = gameData.artifacts || gameData.relics || gameData.planarOrnaments || gameData.driveDiscs || [];
+
+        jsonWeapons.forEach(w => namesWeapons.add(typeof w === 'string' ? w : w.name));
+        jsonPieces.forEach(p => namesPieces.add(typeof p === 'string' ? p : p.name));
       }
 
-      if (piecesDatalist) {
-        piecesDatalist.innerHTML = '';
-        const pieces = gameData.artifacts || gameData.relics || gameData.planarOrnaments || gameData.driveDiscs || [];
-        pieces.forEach(item => {
-          const option = document.createElement('option');
-          option.value = typeof item === 'string' ? item : item.name;
-          piecesDatalist.appendChild(option);
-        });
+      // Cargar también lo que tengas guardado en la biblioteca de Firebase
+      if (typeof libraryData !== 'undefined' && Array.isArray(libraryData)) {
+        libraryData
+          .filter(item => item.game === game)
+          .forEach(item => {
+            if (item.type === 'weapon' && item.name) namesWeapons.add(item.name);
+            if (item.type === 'piece' && item.name) namesPieces.add(item.name);
+          });
       }
+
+      // Insertar opciones ordenadas sin duplicados
+      namesWeapons.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        weaponsDatalist.appendChild(opt);
+      });
+
+      namesPieces.forEach(name => {
+        const opt = document.createElement('option');
+        opt.value = name;
+        piecesDatalist.appendChild(opt);
+      });
     }
 
     document.getElementById('uGame').addEventListener('change', (e) => {
