@@ -355,38 +355,46 @@ async function main() {
        Math.abs((e.start || 0) - banner.start) < (24 * 3600 * 1000))
     );
 
-    const payload = {
-      game: banner.game,
-      color: GAME_META[banner.game]?.color || '#f2c14e',
-      name: banner.name,
-      images: banner.image ? [banner.image] : [],
-      image: banner.image || '',
-      interval: 10,
-      start: banner.start,
-      end: banner.end,
-      notes: banner.notes || '',
-      autoSynced: true,
-      updatedAt: Date.now()
-    };
-
     if (!existing) {
+      // Banner NUEVO: solo usamos la imagen si no es un icono miniatura de baja resolución
+      const isLowRes = !banner.image ||
+        banner.image.includes('Icon') ||
+        banner.image.includes('scale-to-width-down/50') ||
+        banner.image.includes('data:image');
+
+      const initialImage = isLowRes ? '' : banner.image;
+
       await db.collection('banners').add({
-        ...payload,
-        createdAt: Date.now()
+        game: banner.game,
+        color: GAME_META[banner.game]?.color || '#f2c14e',
+        name: banner.name,
+        images: initialImage ? [initialImage] : [],
+        image: initialImage,
+        interval: 10,
+        start: banner.start,
+        end: banner.end,
+        notes: banner.notes || '',
+        autoSynced: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
       });
       insertedCount++;
-      console.log(`   ✨ Nuevo banner guardado: [${banner.game}] ${banner.name}`);
+      console.log(`   ✨ Nuevo banner creado: [${banner.game}] ${banner.name} ${initialImage ? '(con arte oficial)' : '(sin imagen, para que agregues tu URL favorita)'}`);
     } else {
-      // Actualizar si cambiaron fechas o imagen
-      const shouldUpdate =
-        Math.abs(existing.start - banner.start) > 3600000 ||
-        Math.abs(existing.end - banner.end) > 3600000 ||
-        (!existing.image && banner.image);
+      // Banner EXISTENTE: NUNCA tocamos ni sobreescribimos las imágenes que el usuario configuró.
+      // Solo actualizamos las fechas de inicio/fin si cambiaron en la fuente oficial.
+      const dateChanged =
+        Math.abs((existing.start || 0) - banner.start) > 3600000 ||
+        Math.abs((existing.end || 0) - banner.end) > 3600000;
 
-      if (shouldUpdate) {
-        await db.collection('banners').doc(existing.id).update(payload);
+      if (dateChanged) {
+        await db.collection('banners').doc(existing.id).update({
+          start: banner.start,
+          end: banner.end,
+          updatedAt: Date.now()
+        });
         updatedCount++;
-        console.log(`   🔄 Banner actualizado: [${banner.game}] ${banner.name}`);
+        console.log(`   🔄 Fechas actualizadas: [${banner.game}] ${banner.name} (tus imágenes fueron preservadas intactas)`);
       } else {
         skippedCount++;
       }

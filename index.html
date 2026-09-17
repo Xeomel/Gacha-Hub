@@ -2557,15 +2557,10 @@
           alert('💡 Tip para Pinterest:\nPara usar una imagen de Pinterest, hacé clic derecho en la imagen dentro de Pinterest y elegí "Copiar dirección de la imagen", o hacé "Copiar imagen" y pegala acá directamente con Ctrl + V.');
           return;
         }
-        preview.textContent = 'cargando...';
-        try {
-          dataUrl = await processImageUrlOrData(check.raw, maxDim || 800, 0.72);
-          preview.style.backgroundImage = `url(${dataUrl})`;
-          preview.textContent = '';
-          if (urlInput) urlInput.value = '';
-        } catch (err) {
-          preview.textContent = 'error al cargar imagen';
-        }
+        dataUrl = check.raw;
+        preview.style.backgroundImage = `url(${dataUrl})`;
+        preview.textContent = '';
+        if (urlInput) urlInput.value = '';
       };
 
       if (input) {
@@ -3274,15 +3269,10 @@
           alert('💡 Tip para Pinterest:\nHacé clic derecho en la imagen dentro de Pinterest y elegí "Copiar dirección de la imagen", o copiala y pegala con Ctrl+V.');
           return;
         }
-        preview.textContent = 'cargando...';
-        try {
-          imgData = await processImageUrlOrData(check.raw, 900, 0.72);
-          preview.style.backgroundImage = `url(${imgData})`;
-          preview.textContent = '';
-          urlInput.value = '';
-        } catch (err) {
-          preview.textContent = 'error al cargar imagen';
-        }
+        imgData = check.raw;
+        preview.style.backgroundImage = `url(${imgData})`;
+        preview.textContent = '';
+        urlInput.value = '';
       };
 
       urlBtn.addEventListener('click', () => applyUrl(urlInput.value.trim()));
@@ -3921,15 +3911,12 @@
           alert('💡 Tip: Copiá la dirección directa de la imagen en Pinterest o pegala con Ctrl+V.');
           return;
         }
-        preview.textContent = 'cargando...';
-        try {
-          weaponImg = await processImageUrlOrData(check.raw, 600, 0.72);
-          weaponLibraryId = '';
-          preview.style.backgroundImage = `url(${weaponImg})`;
-          preview.textContent = '';
-          urlInput.value = '';
-          updatePickBtn();
-        } catch (err) { preview.textContent = 'error al cargar'; }
+        weaponImg = check.raw;
+        weaponLibraryId = '';
+        preview.style.backgroundImage = `url(${weaponImg})`;
+        preview.textContent = '';
+        urlInput.value = '';
+        updatePickBtn();
       };
 
       urlBtn.addEventListener('click', () => applyUrl(urlInput.value.trim()));
@@ -4047,15 +4034,12 @@
           alert('💡 Tip: Copiá la dirección directa de la imagen en Pinterest o pegala con Ctrl+V.');
           return;
         }
-        preview.textContent = 'cargando...';
-        try {
-          pieceData = await processImageUrlOrData(check.raw, 500, 0.7);
-          pieceLibraryId = '';
-          preview.style.backgroundImage = `url(${pieceData})`;
-          preview.textContent = '';
-          urlInput.value = '';
-          updatePickBtn();
-        } catch (err) { preview.textContent = 'error al cargar'; }
+        pieceData = check.raw;
+        pieceLibraryId = '';
+        preview.style.backgroundImage = `url(${pieceData})`;
+        preview.textContent = '';
+        urlInput.value = '';
+        updatePickBtn();
       };
 
       urlBtn.addEventListener('click', () => applyUrl(urlInput.value.trim()));
