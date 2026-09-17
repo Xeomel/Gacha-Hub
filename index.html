@@ -3848,51 +3848,101 @@
       uma: { weapons: [], artifacts: [] }
     };
 
-    document.addEventListener('DOMContentLoaded', async () => {
-      // 1. Cargar el JSON local
-      try {
-        const res = await fetch('data/equipment-database.json');
-        if (res.ok) {
-          const localData = await res.json();
-          equipmentCatalog = { ...equipmentCatalog, ...localData };
-          console.log('✅ Archivo JSON local cargado.');
-        }
-      } catch (err) {
-        console.warn('No se pudo cargar data/equipment-library.json:', err.message);
-      }
+document.addEventListener('DOMContentLoaded', async () => {
+  // 1. Cargar la base de datos local
+  try {
+    const res = await fetch('./data/equipment-database.json');
+    if (res.ok) {
+      const localData = await res.json();
+      equipmentCatalog = { ...equipmentCatalog, ...localData };
+      console.log('✅ Archivo JSON local cargado correctamente.');
+    }
+  } catch (err) {
+    console.log('ℹ️ Usando datos de APIs y Firebase.');
+  }
 
-      // 2. Obtener armas de Genshin Impact vía API (GenshinDev - CORS Abierto)
-      try {
-        const gRes = await fetch('https://genshin.jmp.blue/weapons');
-        if (gRes.ok) {
-          const gWeapons = await gRes.json();
-          const onlineWeapons = gWeapons.map(w => w.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()));
-          equipmentCatalog.genshin.weapons = Array.from(new Set([
-            ...(equipmentCatalog.genshin.weapons || []),
-            ...onlineWeapons
-          ]));
-          console.log('✅ Armas de Genshin actualizadas automáticamente.');
-        }
-      } catch (e) {
-        console.log('Usando datos locales para Genshin.');
-      }
+  // 2. GENSHIN IMPACT: Armas y Artefactos en ESPAÑOL
+  try {
+    // Armas
+    const gRes = await fetch('https://api.genshin.dev/weapons');
+    if (gRes.ok) {
+      const gWeaponsSlugs = await gRes.json();
+      const weaponPromises = gWeaponsSlugs.map(async (slug) => {
+        try {
+          const wDetail = await fetch(`https://api.genshin.dev/weapons/${slug}?lang=es`);
+          return wDetail.ok ? (await wDetail.json()).name : null;
+        } catch (e) { return null; }
+      });
+      const spanishWeapons = (await Promise.all(weaponPromises)).filter(Boolean);
+      equipmentCatalog.genshin.weapons = Array.from(new Set([...(equipmentCatalog.genshin.weapons || []), ...spanishWeapons]));
+    }
 
-      // 3. Obtener Conos de Luz de HSR vía API
-      try {
-        const hsrRes = await fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json');
-        if (hsrRes.ok) {
-          const hsrConesObj = await hsrRes.json();
-          const onlineCones = Object.values(hsrConesObj).map(c => c.name);
-          equipmentCatalog.hsr.lightCones = Array.from(new Set([
-            ...(equipmentCatalog.hsr.lightCones || []),
-            ...onlineCones
-          ]));
-          console.log('✅ Conos de luz de HSR actualizados automáticamente.');
-        }
-      } catch (e) {
-        console.log('Usando datos locales para HSR.');
-      }
-    });
+    // Artefactos
+    const gArtRes = await fetch('https://api.genshin.dev/artifacts');
+    if (gArtRes.ok) {
+      const gArtSlugs = await gArtRes.json();
+      const artPromises = gArtSlugs.map(async (slug) => {
+        try {
+          const aDetail = await fetch(`https://api.genshin.dev/artifacts/${slug}?lang=es`);
+          return aDetail.ok ? (await aDetail.json()).name : null;
+        } catch (e) { return null; }
+      });
+      const spanishArtifacts = (await Promise.all(artPromises)).filter(Boolean);
+      equipmentCatalog.genshin.artifacts = Array.from(new Set([...(equipmentCatalog.genshin.artifacts || []), ...spanishArtifacts]));
+      console.log('✅ Armas y Artefactos de Genshin cargados.');
+    }
+  } catch (e) {
+    console.log('Usando datos locales para Genshin.');
+  }
+
+  // 3. HONKAI: STAR RAIL: Conos de Luz, Reliquias y Ornamentos en ESPAÑOL
+  try {
+    // Conos de Luz
+    const hsrRes = await fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json');
+    if (hsrRes.ok) {
+      const hsrConesObj = await hsrRes.json();
+      const onlineCones = Object.values(hsrConesObj).map(c => c.name);
+      equipmentCatalog.hsr.lightCones = Array.from(new Set([...(equipmentCatalog.hsr.lightCones || []), ...onlineCones]));
+    }
+
+    // Reliquias y Ornamentos Planarios
+    const hsrRelicRes = await fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/relics.json');
+    if (hsrRelicRes.ok) {
+      const hsrRelicsObj = await hsrRelicRes.json();
+      const onlineRelics = Object.values(hsrRelicsObj).map(r => r.name);
+      equipmentCatalog.hsr.relics = Array.from(new Set([...(equipmentCatalog.hsr.relics || []), ...onlineRelics]));
+      console.log('✅ Conos de luz y Reliquias de HSR cargados.');
+    }
+  } catch (e) {
+    console.log('Usando datos locales para HSR.');
+  }
+
+  // 4. ZENLESS ZONE ZERO: Motores Amplificadores y Discos de Pista en ESPAÑOL
+  try {
+    // Motores Amplificadores (W-Engines)
+    const zzzRes = await fetch('https://raw.githubusercontent.com/Mar-7th/ZenlessZoneZero-API/main/es/wengine.json');
+    if (zzzRes.ok) {
+      const wEnginesData = await zzzRes.json();
+      const onlineEngines = Object.values(wEnginesData).map(w => w.name || w);
+      equipmentCatalog.zzz.wEngines = Array.from(new Set([...(equipmentCatalog.zzz.wEngines || []), ...onlineEngines]));
+    }
+
+    // Discos de Pista (Drive Discs)
+    const zzzDiscRes = await fetch('https://raw.githubusercontent.com/Mar-7th/ZenlessZoneZero-API/main/es/equipment.json');
+    if (zzzDiscRes.ok) {
+      const discsData = await zzzDiscRes.json();
+      const onlineDiscs = Object.values(discsData).map(d => d.name || d);
+      equipmentCatalog.zzz.driveDiscs = Array.from(new Set([...(equipmentCatalog.zzz.driveDiscs || []), ...onlineDiscs]));
+      console.log('✅ Motores y Discos de ZZZ cargados.');
+    }
+  } catch (e) {
+    console.log('Usando datos locales para ZZZ.');
+  }
+
+  // 5. Actualizar las opciones en los <datalist> según el juego seleccionado
+  const currentGame = document.getElementById('uGame')?.value || 'genshin';
+  updateEquipmentDatalists(currentGame);
+});
 
     function updateEquipmentDatalists(game) {
       const weaponsDatalist = document.getElementById('weaponsOptions');
