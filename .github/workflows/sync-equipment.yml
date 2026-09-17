@@ -1,0 +1,39 @@
+name: Auto Sync Equipment Database
+
+on:
+  schedule:
+    - cron: '0 4 * * 0' # 1 vez a la semana
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync-equipment:
+    name: Actualizar Base de Equipamiento
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Ejecutar sincronización de equipamiento
+        run: node scripts/sync-equipment.js
+
+      - name: Guardar cambios en GitHub
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git commit -m "🤖 Actualización de base de datos de equipamiento" || exit 0
+          git push
