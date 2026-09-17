@@ -3851,7 +3851,7 @@
     document.addEventListener('DOMContentLoaded', async () => {
       // 1. Cargar el JSON local
       try {
-        const res = await fetch('data/equipment-library.json');
+        const res = await fetch('data/equipment-database.json');
         if (res.ok) {
           const localData = await res.json();
           equipmentCatalog = { ...equipmentCatalog, ...localData };
