@@ -6,7 +6,10 @@
   "scripts": {
     "start": "npx -y serve .",
     "sync": "node scripts/sync-banners.js",
-    "sync:dry-run": "node scripts/sync-banners.js --dry-run"
+    "sync:dry-run": "node scripts/sync-banners.js --dry-run",
+    "sync:banners": "node scripts/sync-banners.js",
+    "sync:library": "node scripts/sync-library.js",
+    "sync:all": "node scripts/sync-banners.js && node scripts/sync-library.js"
   },
   "keywords": [
     "gacha",
