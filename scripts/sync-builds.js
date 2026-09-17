@@ -11,29 +11,23 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Configuración de endpoints usando Cargo Query en las wikis
-const WIKI_CARGO_SOURCES = [
-  {
-    game: 'genshin',
-    host: 'genshin-impact.fandom.com',
-    url: 'https://genshin-impact.fandom.com/api.php?action=cargoquery&tables=characters&fields=name&where=is_playable%3D1&limit=500&format=json'
-  },
-  {
-    game: 'hsr',
-    host: 'honkai-star-rail.fandom.com',
-    url: 'https://honkai-star-rail.fandom.com/api.php?action=cargoquery&tables=characters&fields=name&where=is_playable%3D1&limit=500&format=json'
-  },
-  {
-    game: 'zzz',
-    host: 'zenless-zone-zero.fandom.com',
-    url: 'https://zenless-zone-zero.fandom.com/api.php?action=cargoquery&tables=agents&fields=name&limit=500&format=json'
-  }
+// Configuración de endpoints usando API MediaWiki estándar
+const WIKI_SOURCES = [
+  { game: 'genshin', host: 'genshin-impact.fandom.com', category: 'Category:Playable_Characters' },
+  { game: 'hsr', host: 'honkai-star-rail.fandom.com', category: 'Category:Playable_Characters' },
+  { game: 'zzz', host: 'zenless-zone-zero.fandom.com', category: 'Category:Agents' }
 ];
+
+const EXCLUDED = ['agent', 'playable characters', 'category:', 'list of', 'traveler', 'main character'];
 
 function fetchJson(url) {
   return new Promise((resolve) => {
-    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
-      // Manejar redirecciones 301 / 302
+    const req = https.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json'
+      }
+    }, (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         return resolve(fetchJson(res.headers.location));
       }
@@ -46,26 +40,54 @@ function fetchJson(url) {
           resolve(null);
         }
       });
-    }).on('error', () => resolve(null));
+    });
+    req.on('error', () => resolve(null));
+    req.end();
   });
+}
+
+async function getCategoryMembers(host, category) {
+  const members = [];
+  let cmcontinue = '';
+
+  try {
+    do {
+      const url = `https://${host}/api.php?action=query&list=categorymembers&cmtitle=${encodeURIComponent(category)}&cmlimit=500&format=json${cmcontinue ? `&cmcontinue=${cmcontinue}` : ''}`;
+      const data = await fetchJson(url);
+      
+      const items = data?.query?.categorymembers || [];
+      for (const item of items) {
+        const title = item.title ? item.title.trim() : '';
+        const cleanName = title.toLowerCase();
+        const isBad = EXCLUDED.some(x => cleanName.includes(x));
+
+        if (item.ns === 0 && !title.includes('/') && !isBad) {
+          members.push(title);
+        }
+      }
+
+      cmcontinue = data?.['continue']?.cmcontinue || '';
+    } while (cmcontinue);
+  } catch (err) {
+    console.error(`❌ Error en ${host}:`, err.message);
+  }
+
+  return members;
 }
 
 async function fetchAllCharacters() {
   const allList = [];
 
-  for (const source of WIKI_CARGO_SOURCES) {
-    console.log(`🌐 Consultando base de datos Cargo de ${source.game.toUpperCase()}...`);
-    const data = await fetchJson(source.url);
-    const results = data?.cargoquery || [];
-    
-    const names = results.map(item => item.title?.name).filter(Boolean);
+  for (const source of WIKI_SOURCES) {
+    console.log(`🌐 Consultando Fandom de ${source.game.toUpperCase()}...`);
+    const names = await getCategoryMembers(source.host, source.category);
     console.log(`  └ ${names.length} personajes encontrados.`);
 
     for (const name of names) {
       allList.push({
         name,
         game: source.game,
-        targetStats: `Stats recomendados según la wiki oficial de ${source.game.toUpperCase()}.`
+        targetStats: `Stats recomendados según la wiki de ${source.game.toUpperCase()}.`
       });
     }
   }
@@ -81,7 +103,7 @@ async function syncBuilds() {
     console.log(`📊 Total acumulado de personajes a procesar: ${fetchedBuilds.length}`);
 
     if (fetchedBuilds.length === 0) {
-      console.log("⚠️ No se obtuvieron personajes de la wiki.");
+      console.log("⚠️ No se obtuvieron personajes.");
       return;
     }
 
@@ -93,6 +115,13 @@ async function syncBuilds() {
         existingBuildsMap.set(data.name.toLowerCase().trim(), { id: doc.id, ...data });
       }
     });
+
+    // Eliminar 'Agent' de Firestore si existía
+    if (existingBuildsMap.has('agent')) {
+      const agentDoc = existingBuildsMap.get('agent');
+      await db.collection('builds').doc(agentDoc.id).delete();
+      console.log("🧹 Se eliminó el registro 'Agent'.");
+    }
 
     let createdCount = 0;
     let updatedCount = 0;
@@ -122,7 +151,7 @@ async function syncBuilds() {
       }
     }
 
-    console.log(`🎉 Finalizado: ${createdCount} personajes creados | ${updatedCount} existentes verificados.`);
+    console.log(`🎉 Finalizado: ${createdCount} creados | ${updatedCount} existentes verificados.`);
   } catch (error) {
     console.error("❌ Error en la ejecución:", error);
     process.exit(1);
