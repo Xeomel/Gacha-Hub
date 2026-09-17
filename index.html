@@ -2220,6 +2220,8 @@
         <button class="btn btn-primary" id="buildSave">Guardar</button>
       </div>
     </div>
+    <datalist id="weaponsOptions"></datalist>
+    <datalist id="piecesOptions"></datalist>
   </dialog>
 
   <!-- Modal Comparador de Builds (Admin) -->
@@ -3841,10 +3843,55 @@
     let teamHandlers = [];
     let weaponHandlers = [];
 
-    document.getElementById('uGame').addEventListener('change', () => {
-      if (!editingBuildId) {
-        document.getElementById('uColor').value = getGameMeta(document.getElementById('uGame').value).hex;
+    // ====== CARGA Y AUTOCOMPLETADO DE EQUIPAMIENTO DE LA BIBLIOTECA JSON ======
+    let equipmentCatalog = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const res = await fetch('data/equipment-database.json');
+        if (res.ok) {
+          equipmentCatalog = await res.json();
+          console.log('✅ Base de equipamiento cargada correctamente.');
+        }
+      } catch (err) {
+        console.warn('No se pudo cargar data/equipment-database.json:', err.message);
       }
+    });
+
+    function updateEquipmentDatalists(game) {
+      if (!equipmentCatalog || !equipmentCatalog[game]) return;
+
+      const weaponsDatalist = document.getElementById('weaponsOptions');
+      const piecesDatalist = document.getElementById('piecesOptions');
+      const gameData = equipmentCatalog[game];
+
+      if (weaponsDatalist) {
+        weaponsDatalist.innerHTML = '';
+        const weapons = gameData.weapons || gameData.lightCones || gameData.wEngines || [];
+        weapons.forEach(item => {
+          const option = document.createElement('option');
+          option.value = typeof item === 'string' ? item : item.name;
+          weaponsDatalist.appendChild(option);
+        });
+      }
+
+      if (piecesDatalist) {
+        piecesDatalist.innerHTML = '';
+        const pieces = gameData.artifacts || gameData.relics || gameData.planarOrnaments || gameData.driveDiscs || [];
+        pieces.forEach(item => {
+          const option = document.createElement('option');
+          option.value = typeof item === 'string' ? item : item.name;
+          piecesDatalist.appendChild(option);
+        });
+      }
+    }
+
+    document.getElementById('uGame').addEventListener('change', (e) => {
+      const selectedGame = e.target.value;
+      if (!editingBuildId) {
+        document.getElementById('uColor').value = getGameMeta(selectedGame).hex;
+      }
+      updateEquipmentDatalists(selectedGame);
     });
 
     function addAbilityRow(existing) {
@@ -3933,7 +3980,7 @@
         <div class="preview weapon-preview">sin imagen</div>
       </div>
       <div class="fields-col">
-        <div class="field"><label>Nombre del arma</label><input class="weapon-name" placeholder="ej. nombre del arma"></div>
+        <div class="field"><label>Nombre del arma</label><input class="weapon-name" list="weaponsOptions" placeholder="ej. nombre del arma"></div>
         <div class="field"><label>Estadísticas del arma</label><textarea class="weapon-stats" placeholder="ej. ATQ base..." style="min-height:44px;"></textarea></div>
         <div class="field"><label>Notas del arma</label><input class="weapon-notes" placeholder="refinamiento, etc."></div>
       </div>
@@ -4050,7 +4097,7 @@
         <div class="preview piece-preview">sin imagen</div>
       </div>
       <div class="fields-col">
-        <div class="field"><label>Nombre de la pieza</label><input class="piece-name" placeholder="ej. Disco 4..."></div>
+        <div class="field"><label>Nombre de la pieza</label><input class="piece-name" list="piecesOptions" placeholder="ej. Disco 4..."></div>
         <div class="field"><label>Estadísticas</label><textarea class="piece-stats" placeholder="ej. Daño crítico..." style="min-height:44px;"></textarea></div>
         <div class="field"><label>Notas</label><input class="piece-notes" placeholder="prioridad, etc."></div>
       </div>
@@ -4263,6 +4310,7 @@
       addAbilityRow();
       addWeaponRow();
       addTeamBlock();
+      updateEquipmentDatalists(document.getElementById('uGame').value);
       buildDialog.showModal();
     }));
     document.getElementById('buildCancel').addEventListener('click', () => buildDialog.close());
@@ -4335,6 +4383,7 @@
         (u.pieces || []).forEach(p => addPieceRow(p));
         const teamsList = getTeamsList(u);
         if (teamsList.length === 0) { addTeamBlock(); } else { teamsList.forEach(t => addTeamBlock(t)); }
+        updateEquipmentDatalists(u.game);
         buildDialog.showModal();
       }
       if (e.target.dataset.delBuild) {
