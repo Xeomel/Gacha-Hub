@@ -1,0 +1,24 @@
+{
+  "name": "gacha-hub",
+  "version": "1.0.0",
+  "description": "Gacha Hub — Banners activos, próximos y builds para Genshin Impact, Honkai: Star Rail, Zenless Zone Zero y Umamusume",
+  "main": "scripts/sync-banners.js",
+  "scripts": {
+    "start": "npx -y serve .",
+    "sync": "node scripts/sync-banners.js",
+    "sync:dry-run": "node scripts/sync-banners.js --dry-run"
+  },
+  "keywords": [
+    "gacha",
+    "genshin-impact",
+    "honkai-star-rail",
+    "zenless-zone-zero",
+    "umamusume",
+    "banners"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}
