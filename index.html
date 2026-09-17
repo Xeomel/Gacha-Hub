@@ -3856,20 +3856,28 @@
         console.log('ℹ️ Usando datos de Firebase / fallback.');
       }
 
-      // 2. GENSHIN IMPACT: Carga directa sin proxy problemático
+      // 2. GENSHIN IMPACT: Usar AllOrigins para evadir fallos 502/CORS
       try {
-        const gRes = await fetch('https://api.genshin.dev/weapons');
-        if (gRes.ok) {
-          const gWeapons = await gRes.json();
+        const fetchJsonViaProxy = async (targetUrl) => {
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+          const response = await fetch(proxyUrl);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return await response.json();
+        };
+
+        const [gWeapons, gArts] = await Promise.all([
+          fetchJsonViaProxy('https://api.genshin.dev/weapons'),
+          fetchJsonViaProxy('https://api.genshin.dev/artifacts')
+        ]);
+
+        if (Array.isArray(gWeapons)) {
           equipmentCatalog.genshin.weapons = Array.from(new Set([
             ...(equipmentCatalog.genshin.weapons || []),
             ...gWeapons
           ]));
         }
 
-        const gArtRes = await fetch('https://api.genshin.dev/artifacts');
-        if (gArtRes.ok) {
-          const gArts = await gArtRes.json();
+        if (Array.isArray(gArts)) {
           equipmentCatalog.genshin.artifacts = Array.from(new Set([
             ...(equipmentCatalog.genshin.artifacts || []),
             ...gArts
@@ -3877,19 +3885,22 @@
           console.log('✅ Armas y Artefactos de Genshin sincronizados.');
         }
       } catch (e) {
-        console.log('ℹ️ Genshin external API no disponible, usando base de datos local.');
+        console.log('ℹ️ Genshin API externa con problemas (502/CORS). Usando base de datos local.');
       }
 
       // 3. HONKAI: STAR RAIL: Conos de Luz y Reliquias
       try {
-        const hsrRes = await fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json');
+        const [hsrRes, hsrRelicRes] = await Promise.all([
+          fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json'),
+          fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/relics.json')
+        ]);
+
         if (hsrRes.ok) {
           const hsrConesObj = await hsrRes.json();
           const onlineCones = Object.values(hsrConesObj).map(c => c.name);
           equipmentCatalog.hsr.lightCones = Array.from(new Set([...(equipmentCatalog.hsr.lightCones || []), ...onlineCones]));
         }
 
-        const hsrRelicRes = await fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/relics.json');
         if (hsrRelicRes.ok) {
           const hsrRelicsObj = await hsrRelicRes.json();
           const onlineRelics = Object.values(hsrRelicsObj).map(r => r.name);
@@ -3900,20 +3911,22 @@
         console.log('ℹ️ HSR external API no disponible, usando base de datos local.');
       }
 
-      // 4. ZENLESS ZONE ZERO: Carga segura
+      // 4. ZENLESS ZONE ZERO: Fallback seguro a Hakush.in o BD Local
       try {
-        const zzzRes = await fetch('https://raw.githubusercontent.com/Aki-S/zzz-data/main/es/wengines.json');
+        const zzzRes = await fetch('https://raw.githubusercontent.com/Mar-7th/ZenlessData/main/es/wengines.json');
         if (zzzRes.ok) {
           const wEnginesData = await zzzRes.json();
           const onlineEngines = Object.values(wEnginesData).map(w => w.name || w);
           equipmentCatalog.zzz.wEngines = Array.from(new Set([...(equipmentCatalog.zzz.wEngines || []), ...onlineEngines]));
           console.log('✅ Motores de ZZZ cargados.');
+        } else {
+          throw new Error('Endpoint no encontrado');
         }
       } catch (e) {
-        console.log('ℹ️ ZZZ external API no disponible, usando base de datos local.');
+        console.log('ℹ️ ZZZ API no disponible, usando base de datos local.');
       }
 
-      // 5. Actualizar los datalists
+      // 5. Actualizar datalists de autocompletado
       const currentGame = document.getElementById('uGame')?.value || 'genshin';
       updateEquipmentDatalists(currentGame);
     });
