@@ -103,7 +103,6 @@
       font-size: .7rem;
     }
 
-    /* Estilo del Botón Notificación de Meta */
     .meta-alert-btn {
       background: #eab308;
       color: #1a1305;
@@ -1893,7 +1892,6 @@
       font-size: .85rem;
     }
 
-    /* ESTILOS DEL MODAL COMPARADOR DE BUILDS (2 COLUMNAS) */
     #compareDialog {
       width: min(860px, 95vw);
       max-height: 90vh;
@@ -2229,14 +2227,12 @@
       <div id="compareReason" class="compare-reason">Se han detectado cambios en las recomendaciones del meta.</div>
 
       <div class="compare-grid">
-        <!-- Columna 1: Tu versión actual -->
         <div class="compare-card active-build">
           <span class="badge" style="--game-color:var(--gold);">Tu Build (Protegida)</span>
           <h3 id="charCurrentTitle">Cargando...</h3>
           <div id="currentBuildDetails" class="target-stats"></div>
         </div>
 
-        <!-- Columna 2: Sugerencia del Meta -->
         <div class="compare-card suggested-build">
           <span class="badge" style="--game-color:var(--purple);">Sugerencia Meta</span>
           <h3 id="charSuggestedTitle">Cargando...</h3>
@@ -2471,7 +2467,6 @@
       }
     });
 
-    // ====== LÓGICA DE SUGERENCIAS META (MODAL 2 COLUMNAS) ======
     async function checkBuildSuggestions() {
       const alertBtn = document.getElementById('openCompareAlertBtn');
       if (!isAdmin) {
@@ -3841,7 +3836,6 @@
     let teamHandlers = [];
     let weaponHandlers = [];
 
-    // ====== CARGA AUTO-ACTUALIZABLE DE EQUIPAMIENTO (LOCAL + API + FIREBASE) ======
     let equipmentCatalog = {
       genshin: { weapons: [], artifacts: [] },
       hsr: { lightCones: [], relics: [], planarOrnaments: [] },
@@ -3849,85 +3843,92 @@
       uma: { weapons: [], artifacts: [] }
     };
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // 1. Cargar la base de datos local
-  try {
-    const res = await fetch('./data/equipment-database.json');
-    if (res.ok) {
-      const localData = await res.json();
-      equipmentCatalog = { ...equipmentCatalog, ...localData };
-      console.log('✅ Archivo JSON local cargado correctamente.');
-    }
-  } catch (err) {
-    console.log('ℹ️ Usando datos de APIs y Firebase.');
-  }
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1. Cargar la base de datos local
+      try {
+        const res = await fetch('./data/equipment-database.json');
+        if (res.ok) {
+          const localData = await res.json();
+          equipmentCatalog = { ...equipmentCatalog, ...localData };
+          console.log('✅ Archivo JSON local cargado correctamente.');
+        }
+      } catch (err) {
+        console.log('ℹ️ Usando datos de APIs y Firebase.');
+      }
 
-  // 2. GENSHIN IMPACT: Armas y Artefactos en ESPAÑOL (Repo estático - Sin CORS ni 502)
-  try {
-    // Armas Genshin
-    const gWeaponsRes = await fetch('https://raw.githubusercontent.com/genshindev/gc-data/main/es/weapons.json');
-    if (gWeaponsRes.ok) {
-      const gWeaponsObj = await gWeaponsRes.json();
-      const spanishWeapons = Object.values(gWeaponsObj).map(w => w.name || w);
-      equipmentCatalog.genshin.weapons = Array.from(new Set([...(equipmentCatalog.genshin.weapons || []), ...spanishWeapons]));
-    }
+      // 2. GENSHIN IMPACT: Armas y Artefactos en ESPAÑOL (vía GenshinDev con Proxy CORS)
+      try {
+        const proxy = 'https://corsproxy.io/?';
+        
+        // Armas Genshin
+        const gRes = await fetch(proxy + encodeURIComponent('https://api.genshin.dev/weapons'));
+        if (gRes.ok) {
+          const gWeaponsSlugs = await gRes.json();
+          const weaponPromises = gWeaponsSlugs.map(async (slug) => {
+            try {
+              const wDetail = await fetch(proxy + encodeURIComponent(`https://api.genshin.dev/weapons/${slug}?lang=es`));
+              return wDetail.ok ? (await wDetail.json()).name : null;
+            } catch (e) { return null; }
+          });
+          const spanishWeapons = (await Promise.all(weaponPromises)).filter(Boolean);
+          equipmentCatalog.genshin.weapons = Array.from(new Set([...(equipmentCatalog.genshin.weapons || []), ...spanishWeapons]));
+        }
 
-    // Artefactos Genshin
-    const gArtRes = await fetch('https://raw.githubusercontent.com/genshindev/gc-data/main/es/artifacts.json');
-    if (gArtRes.ok) {
-      const gArtObj = await gArtRes.json();
-      const spanishArtifacts = Object.values(gArtObj).map(a => a.name || a);
-      equipmentCatalog.genshin.artifacts = Array.from(new Set([...(equipmentCatalog.genshin.artifacts || []), ...spanishArtifacts]));
-      console.log('✅ Armas y Artefactos de Genshin cargados en español.');
-    }
-  } catch (e) {
-    console.log('Usando datos locales para Genshin.');
-  }
+        // Artefactos Genshin
+        const gArtRes = await fetch(proxy + encodeURIComponent('https://api.genshin.dev/artifacts'));
+        if (gArtRes.ok) {
+          const gArtSlugs = await gArtRes.json();
+          const artPromises = gArtSlugs.map(async (slug) => {
+            try {
+              const aDetail = await fetch(proxy + encodeURIComponent(`https://api.genshin.dev/artifacts/${slug}?lang=es`));
+              return aDetail.ok ? (await aDetail.json()).name : null;
+            } catch (e) { return null; }
+          });
+          const spanishArtifacts = (await Promise.all(artPromises)).filter(Boolean);
+          equipmentCatalog.genshin.artifacts = Array.from(new Set([...(equipmentCatalog.genshin.artifacts || []), ...spanishArtifacts]));
+          console.log('✅ Armas y Artefactos de Genshin cargados en español.');
+        }
+      } catch (e) {
+        console.log('Usando datos locales para Genshin.');
+      }
 
-  // 3. HONKAI: STAR RAIL: Conos de Luz y Reliquias en ESPAÑOL
-  try {
-    const hsrRes = await fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json');
-    if (hsrRes.ok) {
-      const hsrConesObj = await hsrRes.json();
-      const onlineCones = Object.values(hsrConesObj).map(c => c.name);
-      equipmentCatalog.hsr.lightCones = Array.from(new Set([...(equipmentCatalog.hsr.lightCones || []), ...onlineCones]));
-    }
+      // 3. HONKAI: STAR RAIL: Conos de Luz y Reliquias en ESPAÑOL
+      try {
+        const hsrRes = await fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json');
+        if (hsrRes.ok) {
+          const hsrConesObj = await hsrRes.json();
+          const onlineCones = Object.values(hsrConesObj).map(c => c.name);
+          equipmentCatalog.hsr.lightCones = Array.from(new Set([...(equipmentCatalog.hsr.lightCones || []), ...onlineCones]));
+        }
 
-    const hsrRelicRes = await fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/relics.json');
-    if (hsrRelicRes.ok) {
-      const hsrRelicsObj = await hsrRelicRes.json();
-      const onlineRelics = Object.values(hsrRelicsObj).map(r => r.name);
-      equipmentCatalog.hsr.relics = Array.from(new Set([...(equipmentCatalog.hsr.relics || []), ...onlineRelics]));
-      console.log('✅ Conos de luz y Reliquias de HSR cargados.');
-    }
-  } catch (e) {
-    console.log('Usando datos locales para HSR.');
-  }
+        const hsrRelicRes = await fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/relics.json');
+        if (hsrRelicRes.ok) {
+          const hsrRelicsObj = await hsrRelicRes.json();
+          const onlineRelics = Object.values(hsrRelicsObj).map(r => r.name);
+          equipmentCatalog.hsr.relics = Array.from(new Set([...(equipmentCatalog.hsr.relics || []), ...onlineRelics]));
+          console.log('✅ Conos de luz y Reliquias de HSR cargados.');
+        }
+      } catch (e) {
+        console.log('Usando datos locales para HSR.');
+      }
 
-  // 4. ZENLESS ZONE ZERO: Motores y Discos en ESPAÑOL (Rutas corregidas)
-  try {
-    const zzzRes = await fetch('https://raw.githubusercontent.com/Mar-7th/ZenlessZoneZero-API/main/es/wengines.json');
-    if (zzzRes.ok) {
-      const wEnginesData = await zzzRes.json();
-      const onlineEngines = Object.values(wEnginesData).map(w => w.name || w);
-      equipmentCatalog.zzz.wEngines = Array.from(new Set([...(equipmentCatalog.zzz.wEngines || []), ...onlineEngines]));
-    }
+      // 4. ZENLESS ZONE ZERO: Motores y Discos en ESPAÑOL
+      try {
+        const zzzRes = await fetch('https://raw.githubusercontent.com/site-a/zzz-data/main/es/wengines.json');
+        if (zzzRes.ok) {
+          const wEnginesData = await zzzRes.json();
+          const onlineEngines = Object.values(wEnginesData).map(w => w.name || w);
+          equipmentCatalog.zzz.wEngines = Array.from(new Set([...(equipmentCatalog.zzz.wEngines || []), ...onlineEngines]));
+          console.log('✅ Motores y Discos de ZZZ cargados.');
+        }
+      } catch (e) {
+        console.log('Usando datos locales para ZZZ.');
+      }
 
-    const zzzDiscRes = await fetch('https://raw.githubusercontent.com/Mar-7th/ZenlessZoneZero-API/main/es/equipments.json');
-    if (zzzDiscRes.ok) {
-      const discsData = await zzzDiscRes.json();
-      const onlineDiscs = Object.values(discsData).map(d => d.name || d);
-      equipmentCatalog.zzz.driveDiscs = Array.from(new Set([...(equipmentCatalog.zzz.driveDiscs || []), ...onlineDiscs]));
-      console.log('✅ Motores y Discos de ZZZ cargados.');
-    }
-  } catch (e) {
-    console.log('Usando datos locales para ZZZ.');
-  }
-
-  // 5. Actualizar los <datalist>
-  const currentGame = document.getElementById('uGame')?.value || 'genshin';
-  updateEquipmentDatalists(currentGame);
-});
+      // 5. Actualizar los <datalist>
+      const currentGame = document.getElementById('uGame')?.value || 'genshin';
+      updateEquipmentDatalists(currentGame);
+    });
 
     function updateEquipmentDatalists(game) {
       const weaponsDatalist = document.getElementById('weaponsOptions');
@@ -3940,7 +3941,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       const namesWeapons = new Set();
       const namesPieces = new Set();
 
-      // Cargar datos unificados del JSON y las APIs públicas
       if (equipmentCatalog && equipmentCatalog[game]) {
         const gameData = equipmentCatalog[game];
         const jsonWeapons = gameData.weapons || gameData.lightCones || gameData.wEngines || [];
@@ -3950,7 +3950,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         jsonPieces.forEach(p => namesPieces.add(typeof p === 'string' ? p : p.name));
       }
 
-      // Cargar también lo que tengas guardado en la biblioteca de Firebase
       if (typeof libraryData !== 'undefined' && Array.isArray(libraryData)) {
         libraryData
           .filter(item => item.game === game)
@@ -3960,7 +3959,6 @@ document.addEventListener('DOMContentLoaded', async () => {
           });
       }
 
-      // Insertar opciones ordenadas sin duplicados
       namesWeapons.forEach(name => {
         const opt = document.createElement('option');
         opt.value = name;
