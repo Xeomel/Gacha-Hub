@@ -102,6 +102,30 @@
       font-size: .7rem;
     }
 
+    /* Estilo del Botón Notificación de Meta */
+    .meta-alert-btn {
+      background: #eab308;
+      color: #1a1305;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .72rem;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);
+      animation: pulseAlert 2s infinite;
+    }
+
+    @keyframes pulseAlert {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+      100% { transform: scale(1); }
+    }
+
     header {
       padding: 60px 6vw 26px;
     }
@@ -479,7 +503,6 @@
       border-color: var(--gold);
     }
 
-    /* Tooltip rápido con stats al pasar el mouse sobre miniaturas de arma/pieza */
     [data-tip] {
       position: relative;
     }
@@ -517,7 +540,6 @@
       pointer-events: none;
     }
 
-    /* Build cards — imagen arriba (como antes), con vista de detalle al hacer click */
     .build-card {
       cursor: pointer;
     }
@@ -702,7 +724,6 @@
       color: var(--ink);
     }
 
-    /* Habilidades — orden de prioridad de izquierda a derecha */
     .abilities-row {
       display: flex;
       gap: 14px;
@@ -753,7 +774,6 @@
       font-weight: 700;
     }
 
-    /* Filas de edición de habilidades en el formulario */
     .ability-row {
       display: flex;
       gap: 8px;
@@ -843,7 +863,6 @@
       border-style: solid;
     }
 
-    /* ===== Detalle de build (modal grande, todo más grande y legible) ===== */
     #buildDetailDialog {
       width: min(1080px, 96vw);
       max-height: 94vh;
@@ -1003,7 +1022,6 @@
       border-top: 1px solid var(--edge);
     }
 
-    /* Panel lateral con stats de arma/pieza clickeada dentro del detalle */
     .clickable-item {
       cursor: pointer;
       border-radius: 10px;
@@ -1086,7 +1104,6 @@
       }
     }
 
-    /* ===== Administración de equipos (cuadros por miembro, agrupados en equipos con nombre) ===== */
     .teams-container {
       display: flex;
       flex-direction: column;
@@ -1409,7 +1426,6 @@
       border-color: var(--gold);
     }
 
-    /* Item row two-column layout (imagen a la izquierda, campos a la derecha) */
     .item-row-grid {
       display: grid;
       grid-template-columns: 112px 1fr;
@@ -1439,7 +1455,6 @@
       margin-bottom: 8px;
     }
 
-    /* Botón "elegir de biblioteca" con miniatura */
     .lib-pick-btn {
       display: flex;
       align-items: center;
@@ -1485,7 +1500,6 @@
       font-size: .9rem;
     }
 
-    /* Picker dialog (biblioteca visual con búsqueda) */
     #libPickerDialog {
       width: min(680px, 94vw);
       max-height: 85vh;
@@ -1629,7 +1643,6 @@
       margin-bottom: 14px;
     }
 
-    /* Biblioteca */
     .lib-subtabs {
       display: flex;
       gap: 8px;
@@ -1686,7 +1699,6 @@
       background: rgba(242, 193, 78, .06);
     }
 
-    /* Estilos para inputs de URL de imagen / Pinterest y portapapeles */
     .img-url-row {
       display: flex;
       gap: 8px;
@@ -1745,7 +1757,6 @@
       background-color: rgba(242, 193, 78, .1);
     }
 
-    /* Modal de login */
     #loginDialog {
       width: min(440px, 94vw);
     }
@@ -1770,7 +1781,6 @@
       font-family: 'JetBrains Mono', monospace;
     }
 
-    /* ===== Sincronización de banners (nuevo) ===== */
     #syncPreviewDialog {
       width: min(760px, 95vw);
       max-height: 90vh;
@@ -1885,6 +1895,56 @@
       font-size: .85rem;
     }
 
+    /* ESTILOS DEL MODAL COMPARADOR DE BUILDS (2 COLUMNAS) */
+    #compareDialog {
+      width: min(860px, 95vw);
+      max-height: 90vh;
+    }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin: 18px 0;
+    }
+
+    @media (max-width: 640px) {
+      .compare-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .compare-card {
+      background: rgba(255, 255, 255, .02);
+      border: 1px solid var(--edge);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .compare-card.active-build {
+      border-color: var(--gold);
+    }
+
+    .compare-card.suggested-build {
+      border-color: var(--purple);
+    }
+
+    .compare-card h3 {
+      font-size: .95rem;
+      margin: 8px 0 12px;
+      font-family: 'Zen Dots';
+    }
+
+    .compare-reason {
+      font-size: .85rem;
+      color: var(--dim);
+      background: rgba(234, 179, 8, 0.1);
+      border: 1px solid rgba(234, 179, 8, 0.3);
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       * {
         transition: none !important;
@@ -1897,7 +1957,9 @@
 
   <div id="app">
     <div class="admin-pill" id="adminPill" style="display:none;">
-      ⚙ MODO ADMIN <button id="exitAdmin">salir</button>
+      ⚙ MODO ADMIN 
+      <button class="meta-alert-btn" id="openCompareAlertBtn" style="display:none;">🔔 Cambios Meta</button>
+      <button id="exitAdmin">salir</button>
     </div>
 
     <header>
@@ -1918,8 +1980,7 @@
       <section class="panel active" id="panel-active">
         <div class="toolbar">
           <button class="btn btn-primary admin-only" style="display:none;" data-open="banner">+ Nuevo banner</button>
-          <button class="btn btn-ghost admin-only" style="display:none;" id="openSyncBtn">🌐 Sincronizar Banners
-            Web</button>
+          <button class="btn btn-ghost admin-only" style="display:none;" id="openSyncBtn">🌐 Sincronizar Banners Web</button>
           <select class="sort-select" id="sortActive">
             <option value="default">Orden: termina antes</option>
             <option value="name-asc">Nombre A-Z</option>
@@ -1935,8 +1996,7 @@
       <section class="panel" id="panel-upcoming">
         <div class="toolbar">
           <button class="btn btn-primary admin-only" style="display:none;" data-open="banner">+ Nuevo banner</button>
-          <button class="btn btn-ghost admin-only" style="display:none;" id="openSyncBtnUpcoming">🌐 Sincronizar Banners
-            Web</button>
+          <button class="btn btn-ghost admin-only" style="display:none;" id="openSyncBtnUpcoming">🌐 Sincronizar Banners Web</button>
           <select class="sort-select" id="sortUpcoming">
             <option value="default">Orden: empieza antes</option>
             <option value="name-asc">Nombre A-Z</option>
@@ -1988,8 +2048,7 @@
     </main>
 
     <footer>
-      <span>ZeroGameGacha — Esta pagina no tiene afiliación con los estudios de los juegos mencionados, pagina de fans
-        para fans</span>
+      <span>ZeroGameGacha — Esta página no tiene afiliación con los estudios de los juegos mencionados, página de fans para fans</span>
       <button class="footer-admin-link" id="openLoginBtn">🔐 Acceso Admin</button>
     </footer>
   </div>
@@ -1998,10 +2057,7 @@
   <dialog id="loginDialog">
     <div class="dialog-inner">
       <h2>Acceso de Administrador</h2>
-      <p style="color:var(--dim); font-size:.82rem; margin-top:-10px; margin-bottom:18px;">Ingresá con tu cuenta de
-        administrador de Firebase.<br><span
-          style="font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--gold);">Atajo rápido: Ctrl +
-          Shift + A</span></p>
+      <p style="color:var(--dim); font-size:.82rem; margin-top:-10px; margin-bottom:18px;">Ingresá con tu cuenta de administrador de Firebase.<br><span style="font-family:'JetBrains Mono',monospace; font-size:.72rem; color:var(--gold);">Atajo rápido: Ctrl + Shift + A</span></p>
       <form id="loginForm" onsubmit="return false;">
         <div class="field">
           <label>Correo electrónico</label>
@@ -2033,19 +2089,16 @@
           <option value="uma">Umamusume</option>
         </select>
       </div>
-      <button type="button" class="btn btn-ghost admin-only" id="bannerSyncBtn" style="margin-bottom:14px;">🔍 Buscar
-        Banners Actuales</button>
+      <button type="button" class="btn btn-ghost admin-only" id="bannerSyncBtn" style="margin-bottom:14px;">🔍 Buscar Banners Actuales</button>
       <div class="field">
         <label>Color del banner</label>
         <input type="color" id="bColor" value="#f2c14e">
       </div>
       <div class="field"><label>Nombre del banner</label><input id="bName" placeholder="ej. Banner de temporada"></div>
       <div class="field">
-        <label>Imágenes del banner <span style="color:var(--dim); text-transform:none; font-weight:400;">(si agregás más
-            de una, se van alternando solas; con una sola queda fija)</span></label>
+        <label>Imágenes del banner <span style="color:var(--dim); text-transform:none; font-weight:400;">(si agregás más de una, se van alternando solas; con una sola queda fija)</span></label>
         <div id="bannerImagesContainer"></div>
-        <button type="button" class="btn btn-ghost" id="addBannerImageBtn" style="margin-top:6px;">+ agregar
-          imagen</button>
+        <button type="button" class="btn btn-ghost" id="addBannerImageBtn" style="margin-top:6px;">+ agregar imagen</button>
       </div>
       <div class="field" id="bannerIntervalField" style="display:none;">
         <label>Cambiar de imagen cada (segundos)</label>
@@ -2055,8 +2108,7 @@
         <div class="field"><label>Empieza</label><input type="datetime-local" id="bStart"></div>
         <div class="field"><label>Termina</label><input type="datetime-local" id="bEnd"></div>
       </div>
-      <div class="field"><label>Notas / rate-up</label><textarea id="bNotes"
-          placeholder="Personajes destacados, detalles..."></textarea></div>
+      <div class="field"><label>Notas / rate-up</label><textarea id="bNotes" placeholder="Personajes destacados, detalles..."></textarea></div>
       <div class="dialog-actions">
         <button class="btn btn-ghost" id="bannerCancel">Cancelar</button>
         <button class="btn btn-primary" id="bannerSave">Guardar</button>
@@ -2064,7 +2116,7 @@
     </div>
   </dialog>
 
-  <!-- Sync preview dialog (nuevo) -->
+  <!-- Sync preview dialog -->
   <dialog id="syncPreviewDialog">
     <div class="dialog-inner">
       <h2>🌐 Sincronizar banners</h2>
@@ -2080,17 +2132,11 @@
       <div class="sync-source-row">
         <button type="button" class="btn btn-ghost" id="syncAutoBtn">🤖 Intentar búsqueda automática</button>
       </div>
-      <div class="sync-status" id="syncStatus">Elegí un juego y probá la búsqueda automática, o pegá los datos
-        manualmente abajo. La búsqueda automática es experimental: depende de que la wiki del juego esté disponible
-        desde el navegador y puede fallar — si eso pasa, usá el modo manual, que siempre funciona.</div>
+      <div class="sync-status" id="syncStatus">Elegí un juego y probá la búsqueda automática, o pegá los datos manualmente abajo.</div>
       <div class="sync-paste-block">
         <div class="field">
-          <label>Pegar datos manualmente (formato JSON) <span
-              style="color:var(--dim); text-transform:none; font-weight:400;">— una lista de banners con nombre, fechas
-              e imagen</span></label>
-          <textarea id="syncPasteInput" placeholder='[
-  { "name": "Arlecchino", "start": "2026-08-12", "end": "2026-09-01", "image": "https://...", "notes": "Rerun 5★" }
-]'></textarea>
+          <label>Pegar datos manualmente (formato JSON)</label>
+          <textarea id="syncPasteInput" placeholder='[ { "name": "Arlecchino", "start": "2026-08-12", "end": "2026-09-01", "image": "https://...", "notes": "Rerun 5★" } ]'></textarea>
         </div>
         <button type="button" class="btn btn-ghost" id="syncParsePasteBtn">📋 Cargar datos pegados</button>
       </div>
@@ -2121,13 +2167,11 @@
         <label>Color de la build</label>
         <input type="color" id="uColor" value="#f2c14e">
       </div>
-      <div class="field"><label>Nombre del personaje</label><input id="uName"
-          placeholder="ej. Furina, Acheron, Ellen..."></div>
+      <div class="field"><label>Nombre del personaje</label><input id="uName" placeholder="ej. Furina, Acheron, Ellen..."></div>
       <div class="field">
         <label>Retrato</label>
         <div class="img-url-row">
-          <input type="text" class="img-url-input" id="uPortraitUrl"
-            placeholder="Pegar URL directa de imagen o Pinterest...">
+          <input type="text" class="img-url-input" id="uPortraitUrl" placeholder="Pegar URL directa de imagen o Pinterest...">
           <button type="button" class="img-url-btn" id="uPortraitUrlBtn">Cargar URL</button>
         </div>
         <input type="file" id="uPortraitFile" accept="image/*">
@@ -2136,27 +2180,19 @@
       </div>
 
       <div class="subsection">
-        <div class="subsection-title">Armas <span style="color:var(--dim); text-transform:none; font-weight:400;">(la
-            primera se muestra grande, el resto como opciones)</span></div>
+        <div class="subsection-title">Armas</div>
         <div id="weaponsContainer"></div>
         <button type="button" class="btn btn-ghost" id="addWeaponBtn">+ agregar arma</button>
       </div>
 
       <div class="field">
-        <label>Stats generales / principales del personaje <span
-            style="color:var(--dim); text-transform:none; font-weight:400;">(solo se ve al abrir el detalle de la build,
-            no en la vista previa)</span></label>
-        <textarea id="uGeneralStats"
-          placeholder="Vida: 45000&#10;ATQ: 3200&#10;Daño crítico: 220%&#10;Prob. crítica: 95%"
-          style="min-height:90px;"></textarea>
+        <label>Stats generales / principales del personaje</label>
+        <textarea id="uGeneralStats" placeholder="Vida: 45000&#10;ATQ: 3200&#10;Daño crítico: 220%&#10;Prob. crítica: 95%" style="min-height:90px;"></textarea>
       </div>
 
       <div class="field">
-        <label>Stats a buscar / objetivo <span style="color:var(--dim); text-transform:none; font-weight:400;">(un stat
-            por línea, queda más ordenado)</span></label>
-        <textarea id="uTargetStats"
-          placeholder="Disco 4: Daño crítico / Prob. Crítico&#10;Disco 5: Ataque / Daño Físico&#10;Disco 6: Ataque&#10;Sub stats: Daño crítico, Prob. crítica, Ataque%"
-          style="min-height:100px;"></textarea>
+        <label>Stats a buscar / objetivo</label>
+        <textarea id="uTargetStats" placeholder="Disco 4: Daño crítico / Prob. Crítico&#10;Disco 5: Ataque / Daño Físico&#10;Disco 6: Ataque&#10;Sub stats: Daño crítico, Prob. crítica, Ataque%" style="min-height:100px;"></textarea>
       </div>
 
       <div class="subsection">
@@ -2166,24 +2202,18 @@
       </div>
 
       <div class="subsection">
-        <div class="subsection-title">Habilidades y nivel objetivo <span
-            style="color:var(--dim); text-transform:none; font-weight:400;">(el orden de la lista = prioridad, se
-            muestran de izquierda a derecha; podés poner nombre, imagen, o ambos)</span></div>
+        <div class="subsection-title">Habilidades y nivel objetivo</div>
         <div id="abilitiesContainer"></div>
         <button type="button" class="btn btn-ghost" id="addAbilityBtn">+ agregar habilidad</button>
       </div>
 
       <div class="subsection">
-        <div class="subsection-title">Equipos recomendados <span
-            style="color:var(--dim); text-transform:none; font-weight:400;">(podés armar más de un equipo, cada uno con
-            su nombre y sus integrantes; en la vista previa solo se muestran los primeros 2)</span></div>
+        <div class="subsection-title">Equipos recomendados</div>
         <div id="teamsContainer" class="teams-container"></div>
-        <button type="button" class="btn btn-ghost" id="addTeamBlockBtn" style="margin-top:12px;">+ agregar
-          equipo</button>
+        <button type="button" class="btn btn-ghost" id="addTeamBlockBtn" style="margin-top:12px;">+ agregar equipo</button>
       </div>
 
-      <div class="field"><label>Notas generales de la build</label><textarea id="uNotes"
-          placeholder="stats objetivo, prioridad de sub-stats, rotación..."></textarea></div>
+      <div class="field"><label>Notas generales de la build</label><textarea id="uNotes" placeholder="stats objetivo, prioridad de sub-stats, rotación..."></textarea></div>
 
       <div class="dialog-actions">
         <button class="btn btn-ghost" id="buildCancel">Cancelar</button>
@@ -2192,7 +2222,36 @@
     </div>
   </dialog>
 
-  <!-- Build detail dialog (vista ampliada al hacer click en una build) -->
+  <!-- Modal Comparador de Builds (Admin) -->
+  <dialog id="compareDialog">
+    <div class="dialog-inner">
+      <h2>⚡ Comparar Cambios en el Meta</h2>
+      <div id="compareReason" class="compare-reason">Se han detectado cambios en las recomendaciones del meta.</div>
+
+      <div class="compare-grid">
+        <!-- Columna 1: Tu versión actual -->
+        <div class="compare-card active-build">
+          <span class="badge" style="--game-color:var(--gold);">Tu Build (Protegida)</span>
+          <h3 id="charCurrentTitle">Cargando...</h3>
+          <div id="currentBuildDetails" class="target-stats"></div>
+        </div>
+
+        <!-- Columna 2: Sugerencia del Meta -->
+        <div class="compare-card suggested-build">
+          <span class="badge" style="--game-color:var(--purple);">Sugerencia Meta</span>
+          <h3 id="charSuggestedTitle">Cargando...</h3>
+          <div id="suggestedBuildDetails" class="target-stats"></div>
+        </div>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="btnDiscardSuggestion">Descartar Sugerencia</button>
+        <button type="button" class="btn btn-primary" id="btnApplySuggestion">Aplicar Cambios del Meta</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Build detail dialog -->
   <dialog id="buildDetailDialog">
     <div class="dialog-inner">
       <div class="detail-close-row"><button class="detail-close-btn" id="buildDetailClose">✕</button></div>
@@ -2204,7 +2263,7 @@
     </div>
   </dialog>
 
-  <!-- Library picker dialog (selección visual con búsqueda) -->
+  <!-- Library picker dialog -->
   <dialog id="libPickerDialog">
     <div class="dialog-inner">
       <h2 id="libPickerTitle">Elegir de biblioteca</h2>
@@ -2229,21 +2288,18 @@
           <option value="uma">Umamusume</option>
         </select>
       </div>
-      <div class="field"><label>Nombre</label><input id="lName"
-          placeholder="ej. Espada de la vendimia, Disco 4, Furina..."></div>
+      <div class="field"><label>Nombre</label><input id="lName" placeholder="ej. Espada de la vendimia, Disco 4, Furina..."></div>
       <div class="field">
         <label>Imagen</label>
         <div class="img-url-row">
-          <input type="text" class="img-url-input" id="lImageUrl"
-            placeholder="Pegar URL directa de imagen o Pinterest...">
+          <input type="text" class="img-url-input" id="lImageUrl" placeholder="Pegar URL directa de imagen o Pinterest...">
           <button type="button" class="img-url-btn" id="lImageUrlBtn">Cargar URL</button>
         </div>
         <input type="file" id="lImageFile" accept="image/*">
         <div class="preview" id="lImagePreview">sin imagen</div>
         <div class="img-paste-hint">💡 Podés subir archivo, pegar URL directa, arrastrar o presionar Ctrl+V</div>
       </div>
-      <div class="field"><label>Estadísticas / notas</label><textarea id="lStats"
-          placeholder="ej. ATQ+, Daño crítico, sets recomendados, rol en el equipo..."></textarea></div>
+      <div class="field"><label>Estadísticas / notas</label><textarea id="lStats" placeholder="ej. ATQ+, Daño crítico, sets recomendados..."></textarea></div>
       <div class="dialog-actions">
         <button class="btn btn-ghost" id="libCancel">Cancelar</button>
         <button class="btn btn-primary" id="libSave">Guardar</button>
@@ -2309,7 +2365,6 @@
       console.warn('Firebase Storage no inicializado:', e.message);
     }
 
-    // Helper para subir imágenes a Firebase Storage con fallback automático a Base64
     async function uploadToStorageIfPossible(dataUrl, folder = 'uploads') {
       if (!dataUrl || !dataUrl.startsWith('data:image')) return dataUrl;
       try {
@@ -2319,18 +2374,15 @@
         const fileRef = storageRef.child(filename);
         const snapshot = await fileRef.putString(dataUrl, 'data_url', { contentType: 'image/jpeg' });
         const downloadUrl = await snapshot.ref.getDownloadURL();
-        console.log('Imagen subida con éxito a Firebase Storage:', downloadUrl);
         return downloadUrl;
       } catch (err) {
-        console.warn('Firebase Storage no disponible o sin permisos configurados. Usando Base64 local como respaldo:', err.message);
         return dataUrl;
       }
     }
 
-    // ====== ADMIN AUTHENTICATION (SEGURO) ======
     let isAdmin = false;
+    let currentSuggestions = [];
 
-    // Limpieza automática de la URL (si quedó un parámetro ?admin=... viejo en el navegador, se limpia)
     const params = new URLSearchParams(window.location.search);
     if (params.has('admin')) {
       const cleanUrl = new URL(window.location.href);
@@ -2344,9 +2396,9 @@
       document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? 'inline-block' : 'none');
       const loginBtn = document.getElementById('openLoginBtn');
       if (loginBtn) loginBtn.style.display = isAdmin ? 'none' : 'inline-block';
+      checkBuildSuggestions();
     }
 
-    // Escuchador en tiempo real del estado de autenticación con Firebase
     auth.onAuthStateChanged(user => {
       isAdmin = !!user;
       updateAdminUI();
@@ -2355,7 +2407,6 @@
       renderLibrary();
     });
 
-    // Cerrar sesión
     document.getElementById('exitAdmin').addEventListener('click', async () => {
       try {
         await auth.signOut();
@@ -2364,7 +2415,6 @@
       }
     });
 
-    // Modal de Login
     const loginDialog = document.getElementById('loginDialog');
     const loginForm = document.getElementById('loginForm');
     const loginError = document.getElementById('loginError');
@@ -2400,14 +2450,9 @@
         await auth.signInWithEmailAndPassword(email, password);
         loginDialog.close();
       } catch (err) {
-        console.error(err);
         let msg = 'Error al iniciar sesión: ' + err.message;
         if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
           msg = 'Correo o contraseña incorrectos.';
-        } else if (err.code === 'auth/invalid-email') {
-          msg = 'El formato del correo es inválido.';
-        } else if (err.code === 'auth/too-many-requests') {
-          msg = 'Demasiados intentos fallidos. Intentá más tarde.';
         }
         loginError.textContent = msg;
         loginError.style.display = 'block';
@@ -2417,7 +2462,6 @@
       }
     });
 
-    // Atajo de teclado: Ctrl + Shift + A o Alt + A para abrir el login rápidamente
     window.addEventListener('keydown', (e) => {
       if ((e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') || (e.altKey && e.key.toLowerCase() === 'a')) {
         e.preventDefault();
@@ -2427,7 +2471,82 @@
       }
     });
 
-    // ====== COMPARTIR BUILD (?build=ID abre el detalle automáticamente) ======
+    // ====== LÓGICA DE SUGERENCIAS META (MODAL 2 COLUMNAS) ======
+    async function checkBuildSuggestions() {
+      const alertBtn = document.getElementById('openCompareAlertBtn');
+      if (!isAdmin) {
+        if (alertBtn) alertBtn.style.display = 'none';
+        return;
+      }
+
+      try {
+        const res = await fetch('./data/build-suggestions.json');
+        if (!res.ok) return;
+        const data = await res.json();
+        currentSuggestions = data.pendingChanges || [];
+
+        if (currentSuggestions.length > 0) {
+          alertBtn.style.display = 'inline-flex';
+          alertBtn.onclick = () => openCompareDialog(currentSuggestions[0]);
+        } else {
+          alertBtn.style.display = 'none';
+        }
+      } catch (err) {
+        if (alertBtn) alertBtn.style.display = 'none';
+      }
+    }
+
+    function openCompareDialog(item) {
+      if (!item) return;
+      const compareDialog = document.getElementById('compareDialog');
+      document.getElementById('compareReason').innerText = item.reason || "Se detectaron sugerencias de optimización para el meta actual.";
+      document.getElementById('charCurrentTitle').innerText = item.characterName;
+      document.getElementById('charSuggestedTitle').innerText = item.characterName + " (Sugerencia)";
+
+      renderStatsComparison('currentBuildDetails', item.currentBuild);
+      renderStatsComparison('suggestedBuildDetails', item.suggestedBuild);
+
+      document.getElementById('btnApplySuggestion').onclick = async () => {
+        const buildDoc = buildsData.find(b => b.name.toLowerCase() === item.characterName.toLowerCase());
+        if (buildDoc) {
+          let formattedTarget = "";
+          for (const slot in item.suggestedBuild) {
+            const slotData = item.suggestedBuild[slot];
+            const stats = Array.isArray(slotData.validStats) ? slotData.validStats.join(' / ') : slotData;
+            formattedTarget += `${slotData.name || slot}: ${stats}\n`;
+          }
+          await db.collection('builds').doc(buildDoc.id).update({
+            targetStats: formattedTarget.trim(),
+            updatedAt: Date.now()
+          });
+        }
+        compareDialog.close();
+        checkBuildSuggestions();
+      };
+
+      document.getElementById('btnDiscardSuggestion').onclick = () => {
+        compareDialog.close();
+      };
+
+      compareDialog.showModal();
+    }
+
+    function renderStatsComparison(containerId, slots) {
+      const container = document.getElementById(containerId);
+      if (typeof slots === 'string') {
+        container.innerHTML = formatStatsBlock(slots);
+        return;
+      }
+      let html = "";
+      for (const slot in slots) {
+        const data = slots[slot];
+        const label = data.name || slot;
+        const val = Array.isArray(data.validStats) ? data.validStats.join(' / ') : data;
+        html += `<div class="stat-line"><b>${escapeHtml(label)}:</b> ${escapeHtml(val)}</div>`;
+      }
+      container.innerHTML = html;
+    }
+
     const sharedBuildId = params.get('build');
     let sharedBuildAutoOpened = false;
 
@@ -2438,7 +2557,6 @@
       return url.toString();
     }
 
-    // ====== GAME CONFIG ======
     const GAMES = {
       genshin: { label: 'Genshin Impact', color: 'var(--gold)', hex: '#f2c14e', icon: 'GI' },
       hsr: { label: 'Honkai: Star Rail', color: 'var(--purple)', hex: '#b98cea', icon: 'HSR' },
@@ -2483,7 +2601,6 @@
       { id: 'noir', label: 'Noir puro', css: '#0c0a12' }
     ];
 
-    // ====== GESTOR DE IMÁGENES (COMPRESIÓN, URLs DE PINTEREST/WEB Y PORTAPAPELES) ======
     function extractDirectImageUrl(url) {
       if (!url) return { isPinterestPage: false, raw: '' };
       url = url.trim();
@@ -2513,9 +2630,7 @@
             resolve(src);
           }
         };
-        img.onerror = () => {
-          resolve(src);
-        };
+        img.onerror = () => { resolve(src); };
         img.src = src;
       });
     }
@@ -2554,7 +2669,7 @@
         if (!rawUrl) return;
         const check = extractDirectImageUrl(rawUrl);
         if (check.isPinterestPage) {
-          alert('💡 Tip para Pinterest:\nPara usar una imagen de Pinterest, hacé clic derecho en la imagen dentro de Pinterest y elegí "Copiar dirección de la imagen", o hacé "Copiar imagen" y pegala acá directamente con Ctrl + V.');
+          alert('💡 Tip para Pinterest:\nPara usar una imagen de Pinterest, hacé clic derecho en la imagen dentro de Pinterest y elegí "Copiar dirección de la imagen".');
           return;
         }
         dataUrl = check.raw;
@@ -2621,11 +2736,7 @@
       };
     }
 
-    // ====== SOPORTE GLOBAL DE PEGAR CON PORTAPAPELES (CTRL + V) ======
     window.addEventListener('paste', async (e) => {
-      const activeEl = document.activeElement;
-      const isTypingText = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA') && !activeEl.classList.contains('img-url-input');
-
       const items = (e.clipboardData || e.originalEvent.clipboardData).items;
       let imageFile = null;
       for (let i = 0; i < items.length; i++) {
@@ -2661,7 +2772,6 @@
       }
     });
 
-    // ====== TABS ======
     document.querySelectorAll('.tab').forEach(tab => {
       tab.addEventListener('click', () => {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -2672,7 +2782,6 @@
       });
     });
 
-    // ====== TINTE DE FONDO SEGÚN EL JUEGO FILTRADO ======
     function updateBgTint() {
       const activeTab = document.querySelector('.tab.active');
       const key = activeTab ? activeTab.dataset.panel : 'active';
@@ -2686,7 +2795,6 @@
       }
     }
 
-    // ====== COUNTDOWN ======
     function formatCountdown(ms) {
       if (ms <= 0) return null;
       const s = Math.floor(ms / 1000);
@@ -2708,7 +2816,6 @@
       });
     }, 1000);
 
-    // ====== STATE ======
     let bannersData = [];
     let buildsData = [];
     let libraryData = [];
@@ -2718,7 +2825,6 @@
     let sortOption = { active: 'default', upcoming: 'default', builds: 'recent' };
     let showOnlyFavorites = false;
 
-    // ====== FAVORITOS (guardados en localStorage del navegador) ======
     const FAVORITES_KEY = 'zgg_favorite_builds';
     function getFavoriteIds() {
       try { return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); } catch (e) { return []; }
@@ -2730,7 +2836,6 @@
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
     }
 
-    // ====== RENDER BANNERS ======
     let bannerSlideIntervals = [];
 
     function renderBanners() {
@@ -2829,10 +2934,6 @@
     function formatStatsBlock(text) {
       if (!text) return '';
       let lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-      if (lines.length <= 1) {
-        lines = text.split(/(?<=[a-záéíóúñ%])\s(?=(Disco|Slot|Artefacto|Sub ?stats?|Stats?|Arena|Cáliz|Corona|Copa|Reloj|Plumas|Flor)\b)/i)
-          .map(l => l.trim()).filter(Boolean);
-      }
       return lines.map(line => {
         const idx = line.indexOf(':');
         if (idx > -1 && idx < 28) {
@@ -2844,7 +2945,6 @@
       }).join('');
     }
 
-    // ====== BUILD RENDER HELPERS ======
     function getWeaponsList(u) {
       let weaponsList = u.weapons;
       if (!weaponsList || weaponsList.length === 0) {
@@ -2937,7 +3037,7 @@
       const abilities = (u.abilities || []).filter(a => a.name || a.level || a.image);
       if (!abilities.length) return '';
       return `
-    <div class="section-label">Habilidades — prioridad de subida (izquierda a derecha)</div>
+    <div class="section-label">Habilidades — prioridad de subida</div>
     <div class="abilities-row">
       ${abilities.map((a, i) => `
         <div class="ability-chip">
@@ -2959,7 +3059,6 @@
       return u.generalStats ? `<div class="section-label">Stats generales</div><div class="target-stats">${formatStatsBlock(u.generalStats)}</div>` : '';
     }
 
-    // ====== RENDER BUILDS ======
     function renderBuilds() {
       renderGameFilters('filtersBuilds', buildsData, 'builds');
       let filtered = activeGameFilter.builds ? buildsData.filter(u => u.game === activeGameFilter.builds) : buildsData.slice();
@@ -3011,7 +3110,6 @@
       });
     }
 
-    // ====== BUILD DETAIL DIALOG ======
     const buildDetailDialog = document.getElementById('buildDetailDialog');
     document.getElementById('buildDetailClose').addEventListener('click', () => buildDetailDialog.close());
 
@@ -3101,7 +3199,6 @@
       buildDetailDialog.showModal();
     }
 
-    // ====== RENDER LIBRARY ======
     function renderLibrary() {
       const gridEl = document.getElementById('gridLibrary');
       if (!gridEl) return;
@@ -3146,7 +3243,6 @@
       });
     });
 
-    // ====== BUSCADOR / ORDEN / FAVORITOS ======
     document.getElementById('searchBuilds').addEventListener('input', (e) => {
       searchQuery.builds = e.target.value;
       renderBuilds();
@@ -3174,7 +3270,6 @@
       renderBuilds();
     });
 
-    // ====== FIRESTORE LISTENERS ======
     db.collection('banners').onSnapshot(snap => {
       bannersData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderBanners();
@@ -3196,12 +3291,7 @@
     db.collection('library').onSnapshot(snap => {
       libraryData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderLibrary();
-      refreshOpenBuilds();
     }, err => console.error(err));
-
-    function refreshOpenBuilds() {
-      // Helper placeholder
-    }
 
     db.collection('config').doc('site').onSnapshot(doc => {
       const data = doc.exists ? doc.data() : {};
@@ -3222,7 +3312,6 @@
       }
     }
 
-    // ====== BANNER DIALOG ======
     const bannerDialog = document.getElementById('bannerDialog');
     let editingBannerId = null;
     let bannerImageHandlers = [];
@@ -3266,7 +3355,7 @@
         if (!rawUrl) return;
         const check = extractDirectImageUrl(rawUrl);
         if (check.isPinterestPage) {
-          alert('💡 Tip para Pinterest:\nHacé clic derecho en la imagen dentro de Pinterest y elegí "Copiar dirección de la imagen", o copiala y pegala con Ctrl+V.');
+          alert('💡 Tip para Pinterest:\nHacé clic derecho en la imagen dentro de Pinterest y elegí "Copiar dirección de la imagen".');
           return;
         }
         imgData = check.raw;
@@ -3402,15 +3491,6 @@
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
     }
 
-    // ====== SINCRONIZACIÓN DE BANNERS (BannerFetcher) ======
-    // NOTA IMPORTANTE: la búsqueda automática consulta wikis públicas (Fandom) directamente
-    // desde el navegador, usando la API de MediaWiki con "origin=*" (que sí permite CORS).
-    // No existe una API unificada y 100% confiable con fechas oficiales de banners para
-    // los 4 juegos, así que este módulo es un "mejor esfuerzo": intenta encontrar tablas de
-    // banners en la wiki y extraer nombre / fechas / imagen con patrones genéricos. Si la
-    // wiki cambia su formato o el juego no tiene una página clara, la búsqueda puede no
-    // encontrar nada — para esos casos siempre queda disponible el modo manual (pegar JSON),
-    // que es 100% confiable porque los datos los provee la persona administradora.
     const BANNER_WIKI_SOURCES = {
       genshin: { host: 'genshin-impact.fandom.com', page: 'Wish/List' },
       hsr: { host: 'honkai-star-rail.fandom.com', page: 'Warp/List' },
@@ -3422,14 +3502,14 @@
       async fetchForGame(gameKey) {
         const source = BANNER_WIKI_SOURCES[gameKey];
         if (!source || !source.host) {
-          throw new Error('No hay una fuente automática configurada para este juego todavía. Usá el modo manual (pegar JSON).');
+          throw new Error('No hay una fuente automática configurada para este juego todavía.');
         }
         const apiUrl = `https://${source.host}/api.php?action=parse&page=${encodeURIComponent(source.page)}&prop=text&format=json&origin=*`;
         let res;
         try {
           res = await fetch(apiUrl);
         } catch (err) {
-          throw new Error('No se pudo conectar con la wiki (' + source.host + '). Puede que el navegador esté bloqueando la solicitud (CORS) o que no haya conexión.');
+          throw new Error('No se pudo conectar con la wiki (' + source.host + ').');
         }
         if (!res.ok) throw new Error('La wiki respondió con un error (HTTP ' + res.status + ').');
         const data = await res.json();
@@ -3488,7 +3568,6 @@
             }
           });
         } else {
-          // genshin y hsr
           let currentStart = null;
           let currentEnd = null;
           rows.forEach(row => {
@@ -3519,7 +3598,6 @@
           });
         }
 
-        // de-duplicar por nombre+fechas
         const seen = new Set();
         return results.filter(r => {
           const key = r.name + r.start + r.end;
@@ -3591,7 +3669,7 @@
     function openSyncDialog(prefillGame) {
       syncCurrentResults = [];
       renderSyncResults();
-      setSyncStatus('Elegí un juego y probá la búsqueda automática, o pegá los datos manualmente abajo. La búsqueda automática es experimental: depende de que la wiki del juego esté disponible desde el navegador y puede fallar — si eso pasa, usá el modo manual, que siempre funciona.');
+      setSyncStatus('Elegí un juego y probá la búsqueda automática, o pegá los datos manualmente abajo.');
       document.getElementById('syncPasteInput').value = '';
       if (prefillGame) document.getElementById('syncGame').value = prefillGame;
       syncPreviewDialog.showModal();
@@ -3610,12 +3688,12 @@
       try {
         const results = await BannerFetcher.fetchForGame(game);
         if (results.length === 0) {
-          setSyncStatus('No se encontraron banners con fechas reconocibles en la wiki. Probá el modo manual (pegar JSON) — es más confiable.', 'error');
+          setSyncStatus('No se encontraron banners con fechas reconocibles.', 'error');
           return;
         }
         syncCurrentResults = results;
         renderSyncResults();
-        setSyncStatus(`Se encontraron ${results.length} banner(s) — revisá y corregí los datos antes de importar, ya que la extracción automática puede tener errores.`, 'ok');
+        setSyncStatus(`Se encontraron ${results.length} banner(s).`, 'ok');
       } catch (err) {
         setSyncStatus('No se pudo completar la búsqueda automática: ' + err.message, 'error');
       }
@@ -3636,7 +3714,7 @@
         }));
         syncCurrentResults = normalized;
         renderSyncResults();
-        setSyncStatus(`Se cargaron ${normalized.length} banner(s) desde el texto pegado — revisá los datos antes de importar.`, 'ok');
+        setSyncStatus(`Se cargaron ${normalized.length} banner(s).`, 'ok');
       } catch (err) {
         setSyncStatus('El JSON pegado no es válido: ' + err.message, 'error');
       }
@@ -3657,7 +3735,7 @@
         if (isNaN(startTs) || isNaN(endTs)) continue;
         let finalImage = item.image || '';
         if (finalImage) {
-          try { finalImage = await processImageUrlOrData(finalImage, 900, 0.72); } catch (e) { /* usar la URL tal cual si falla */ }
+          try { finalImage = await processImageUrlOrData(finalImage, 900, 0.72); } catch (e) { }
         }
         try {
           await db.collection('banners').add({
@@ -3674,13 +3752,12 @@
           imported++;
         } catch (err) { console.error(err); }
       }
-      setSyncStatus(`Se importaron ${imported} de ${checks.length} banner(s) seleccionados.`, imported > 0 ? 'ok' : 'error');
+      setSyncStatus(`Se importaron ${imported} de ${checks.length} banner(s).`, imported > 0 ? 'ok' : 'error');
       if (imported > 0) {
         setTimeout(() => syncPreviewDialog.close(), 1200);
       }
     });
 
-    // ====== LIBRARY HELPERS ======
     const LIB_PICKER_TITLES = { weapon: 'Elegir arma de biblioteca', piece: 'Elegir pieza / disco de biblioteca', character: 'Elegir personaje de biblioteca' };
 
     const libPickerDialog = document.getElementById('libPickerDialog');
@@ -3712,7 +3789,7 @@
 
       const customCard = document.createElement('div');
       customCard.className = 'picker-custom-opt';
-      customCard.innerHTML = `<span style="font-size:1.4rem;">＋</span><span>Personalizada / nueva<br>(cargar manualmente)</span>`;
+      customCard.innerHTML = `<span style="font-size:1.4rem;">＋</span><span>Personalizada / nueva</span>`;
       customCard.addEventListener('click', () => {
         libPickerDialog.close();
       });
@@ -3757,7 +3834,6 @@
       } catch (err) { alert('Error al guardar en biblioteca: ' + err.message); }
     }
 
-    // ====== BUILD DIALOG ======
     const buildDialog = document.getElementById('buildDialog');
     const uPortrait = wireImageInput('uPortraitFile', 'uPortraitPreview', 700, 'uPortraitUrl', 'uPortraitUrlBtn');
     let editingBuildId = null;
@@ -3771,7 +3847,6 @@
       }
     });
 
-    // ---- Habilidades ----
     function addAbilityRow(existing) {
       const container = document.getElementById('abilitiesContainer');
       const row = document.createElement('div');
@@ -3781,10 +3856,10 @@
       <button type="button" class="ability-up" title="subir prioridad">▲</button>
       <button type="button" class="ability-down" title="bajar prioridad">▼</button>
     </div>
-    <div class="ability-thumb-btn" title="Clic para subir archivo o clic derecho para pegar URL"><span class="ability-thumb-plus">+</span></div>
+    <div class="ability-thumb-btn" title="Clic para subir archivo"><span class="ability-thumb-plus">+</span></div>
     <input type="file" class="ability-file" accept="image/*" style="display:none;">
-    <input class="ability-name" placeholder="Nombre (opcional si hay imagen)">
-    <input class="ability-level" placeholder="Nivel objetivo (ej. 10)">
+    <input class="ability-name" placeholder="Nombre">
+    <input class="ability-level" placeholder="Nivel objetivo">
     <button type="button" class="remove-ability">✕</button>
   `;
       container.appendChild(row);
@@ -3806,15 +3881,6 @@
         }
       }
       thumbBtn.addEventListener('click', () => fileInput.click());
-      thumbBtn.addEventListener('contextmenu', async (e) => {
-        e.preventDefault();
-        const url = prompt('Pegar URL de la imagen de habilidad:');
-        if (url) {
-          abilityImg = await processImageUrlOrData(url.trim(), 300, 0.7);
-          row._abilityImage = abilityImg;
-          refreshThumb();
-        }
-      });
 
       fileInput.addEventListener('change', async () => {
         const file = fileInput.files[0];
@@ -3853,12 +3919,12 @@
     <div class="field">
       <button type="button" class="lib-pick-btn weapon-pick-btn">
         <span class="lib-pick-thumb"></span>
-        <span class="lib-pick-label">Elegir de biblioteca (o cargar una nueva abajo)</span>
+        <span class="lib-pick-label">Elegir de biblioteca</span>
         <span class="lib-pick-icon">🔍</span>
       </button>
     </div>
     <div class="img-url-row">
-      <input type="text" class="img-url-input weapon-url-input" placeholder="Pegar URL directa de arma o Pinterest...">
+      <input type="text" class="img-url-input weapon-url-input" placeholder="Pegar URL directa...">
       <button type="button" class="img-url-btn weapon-url-btn">Cargar URL</button>
     </div>
     <div class="item-row-grid">
@@ -3867,9 +3933,9 @@
         <div class="preview weapon-preview">sin imagen</div>
       </div>
       <div class="fields-col">
-        <div class="field"><label>Nombre del arma</label><input class="weapon-name" placeholder="ej. nombre del arma o soporte"></div>
-        <div class="field"><label>Estadísticas del arma</label><textarea class="weapon-stats" placeholder="ej. ATQ base, sub-stat, refinamiento..." style="min-height:44px;"></textarea></div>
-        <div class="field"><label>Notas del arma</label><input class="weapon-notes" placeholder="refinamiento, superposición, etc."></div>
+        <div class="field"><label>Nombre del arma</label><input class="weapon-name" placeholder="ej. nombre del arma"></div>
+        <div class="field"><label>Estadísticas del arma</label><textarea class="weapon-stats" placeholder="ej. ATQ base..." style="min-height:44px;"></textarea></div>
+        <div class="field"><label>Notas del arma</label><input class="weapon-notes" placeholder="refinamiento, etc."></div>
       </div>
     </div>
     <button type="button" class="mini-save-btn weapon-save-lib">💾 Guardar esta arma en biblioteca</button>
@@ -3901,16 +3967,12 @@
         const name = row.querySelector('.weapon-name').value.trim();
         thumb.style.backgroundImage = weaponImg ? `url(${weaponImg})` : 'none';
         if (name) { label.textContent = name; pickBtn.classList.add('has-selection'); }
-        else { label.textContent = 'Elegir de biblioteca (o cargar una nueva abajo)'; pickBtn.classList.remove('has-selection'); }
+        else { label.textContent = 'Elegir de biblioteca'; pickBtn.classList.remove('has-selection'); }
       }
 
       const applyUrl = async (rawUrl) => {
         if (!rawUrl) return;
         const check = extractDirectImageUrl(rawUrl);
-        if (check.isPinterestPage) {
-          alert('💡 Tip: Copiá la dirección directa de la imagen en Pinterest o pegala con Ctrl+V.');
-          return;
-        }
         weaponImg = check.raw;
         weaponLibraryId = '';
         preview.style.backgroundImage = `url(${weaponImg})`;
@@ -3920,8 +3982,6 @@
       };
 
       urlBtn.addEventListener('click', () => applyUrl(urlInput.value.trim()));
-      urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyUrl(urlInput.value.trim()); } });
-
       pickBtn.addEventListener('click', () => {
         openLibraryPicker('weapon', () => document.getElementById('uGame').value, applyPicked);
       });
@@ -3976,12 +4036,12 @@
     <div class="field">
       <button type="button" class="lib-pick-btn piece-pick-btn">
         <span class="lib-pick-thumb"></span>
-        <span class="lib-pick-label">Elegir de biblioteca (o cargar una nueva abajo)</span>
+        <span class="lib-pick-label">Elegir de biblioteca</span>
         <span class="lib-pick-icon">🔍</span>
       </button>
     </div>
     <div class="img-url-row">
-      <input type="text" class="img-url-input piece-url-input" placeholder="Pegar URL directa de pieza o Pinterest...">
+      <input type="text" class="img-url-input piece-url-input" placeholder="Pegar URL directa...">
       <button type="button" class="img-url-btn piece-url-btn">Cargar URL</button>
     </div>
     <div class="item-row-grid">
@@ -3990,9 +4050,9 @@
         <div class="preview piece-preview">sin imagen</div>
       </div>
       <div class="fields-col">
-        <div class="field"><label>Nombre de la pieza</label><input class="piece-name" placeholder="ej. Disco 4, Artefacto de arenas..."></div>
-        <div class="field"><label>Estadísticas</label><textarea class="piece-stats" placeholder="ej. Daño crítico, ATQ%, sets recomendados..." style="min-height:44px;"></textarea></div>
-        <div class="field"><label>Notas</label><input class="piece-notes" placeholder="cantidad de piezas, prioridad, etc."></div>
+        <div class="field"><label>Nombre de la pieza</label><input class="piece-name" placeholder="ej. Disco 4..."></div>
+        <div class="field"><label>Estadísticas</label><textarea class="piece-stats" placeholder="ej. Daño crítico..." style="min-height:44px;"></textarea></div>
+        <div class="field"><label>Notas</label><input class="piece-notes" placeholder="prioridad, etc."></div>
       </div>
     </div>
     <button type="button" class="mini-save-btn piece-save-lib">💾 Guardar en biblioteca</button>
@@ -4024,16 +4084,12 @@
         const name = row.querySelector('.piece-name').value.trim();
         thumb.style.backgroundImage = pieceData ? `url(${pieceData})` : 'none';
         if (name) { label.textContent = name; pickBtn.classList.add('has-selection'); }
-        else { label.textContent = 'Elegir de biblioteca (o cargar una nueva abajo)'; pickBtn.classList.remove('has-selection'); }
+        else { label.textContent = 'Elegir de biblioteca'; pickBtn.classList.remove('has-selection'); }
       }
 
       const applyUrl = async (rawUrl) => {
         if (!rawUrl) return;
         const check = extractDirectImageUrl(rawUrl);
-        if (check.isPinterestPage) {
-          alert('💡 Tip: Copiá la dirección directa de la imagen en Pinterest o pegala con Ctrl+V.');
-          return;
-        }
         pieceData = check.raw;
         pieceLibraryId = '';
         preview.style.backgroundImage = `url(${pieceData})`;
@@ -4043,8 +4099,6 @@
       };
 
       urlBtn.addEventListener('click', () => applyUrl(urlInput.value.trim()));
-      urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyUrl(urlInput.value.trim()); } });
-
       pickBtn.addEventListener('click', () => {
         openLibraryPicker('piece', () => document.getElementById('uGame').value, applyPicked);
       });
@@ -4089,17 +4143,16 @@
 
     document.getElementById('addPieceBtn').addEventListener('click', () => addPieceRow());
 
-    // Cada "team block" es un equipo con nombre propio y una fila de cuadros para sus integrantes
     function addTeamSlot(slotsContainer, slotHandlers, existing) {
       const idx = slotHandlers.length;
       const slot = document.createElement('div');
       slot.className = 'team-slot';
       slot.innerHTML = `
     <button type="button" class="remove-slot">✕</button>
-    <div class="slot-thumb-btn" title="Clic para elegir de biblioteca o clic derecho para pegar URL"><span class="slot-plus">+</span></div>
+    <div class="slot-thumb-btn" title="Clic para elegir"><span class="slot-plus">+</span></div>
     <input type="file" class="slot-file" accept="image/*" style="display:none;">
     <input class="slot-name" placeholder="Nombre">
-    <input class="slot-notes" placeholder="rol (opc.)">
+    <input class="slot-notes" placeholder="rol">
   `;
       slotsContainer.appendChild(slot);
 
@@ -4126,15 +4179,6 @@
           slotImg = item.image || '';
           refreshThumb();
         });
-      });
-
-      thumbBtn.addEventListener('contextmenu', async (e) => {
-        e.preventDefault();
-        const url = prompt('Pegar URL directa de imagen de personaje:');
-        if (url) {
-          slotImg = await processImageUrlOrData(url.trim(), 400, 0.7);
-          refreshThumb();
-        }
       });
 
       fileInput.addEventListener('change', async () => {
@@ -4166,7 +4210,7 @@
       block.className = 'team-block';
       block.innerHTML = `
     <button type="button" class="remove-team-block">✕</button>
-    <input class="team-name-input" placeholder="Nombre del equipo (ej. Hipercarry, Sustain...)">
+    <input class="team-name-input" placeholder="Nombre del equipo (ej. Hypercarry...)">
     <div class="team-slots"></div>
     <button type="button" class="add-slot-btn" title="agregar integrante">+</button>
   `;
@@ -4243,7 +4287,8 @@
         targetStats: document.getElementById('uTargetStats').value.trim(),
         pieces,
         teams,
-        notes: document.getElementById('uNotes').value.trim()
+        notes: document.getElementById('uNotes').value.trim(),
+        isProtectedByAdmin: true
       };
       try {
         if (editingBuildId) {
@@ -4299,7 +4344,6 @@
       }
     });
 
-    // ====== LIBRARY DIALOG ======
     const libDialog = document.getElementById('libDialog');
     const lImg = wireImageInput('lImageFile', 'lImagePreview', 600, 'lImageUrl', 'lImageUrlBtn');
     let editingLibId = null;
@@ -4357,7 +4401,6 @@
       }
     });
 
-    // ====== CONFIG DIALOG ======
     const configDialog = document.getElementById('configDialog');
     const cBg = wireImageInput('cBgFile', 'cBgPreview', 1600, 'cBgUrl', 'cBgUrlBtn');
     let selectedBgType = 'preset';
