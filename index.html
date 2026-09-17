@@ -3861,12 +3861,12 @@
         console.warn('No se pudo cargar data/equipment-library.json:', err.message);
       }
 
-      // 2. Obtener armas de Genshin Impact vía API
+      // 2. Obtener armas de Genshin Impact vía API (GenshinDev - CORS Abierto)
       try {
-        const gRes = await fetch('https://genshin-app-api.vercel.app/api/weapons');
+        const gRes = await fetch('https://genshin.jmp.blue/weapons');
         if (gRes.ok) {
           const gWeapons = await gRes.json();
-          const onlineWeapons = gWeapons.map(w => w.name || w);
+          const onlineWeapons = gWeapons.map(w => w.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()));
           equipmentCatalog.genshin.weapons = Array.from(new Set([
             ...(equipmentCatalog.genshin.weapons || []),
             ...onlineWeapons
