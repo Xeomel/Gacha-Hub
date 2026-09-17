@@ -35,7 +35,7 @@ Esta guía te muestra cómo dejar configurada la actualización automática de b
 
 ### Paso 2: Guardar la Clave en GitHub Secrets
 
-1. Ve a tu repositorio en GitHub: `https://github.com/AleCari/Gacha-Hub`.
+1. Ve a tu repositorio en GitHub: `https://github.com/Xeomel/Gacha-Hub`.
 2. Haz clic en la pestaña **Settings** (Ajustes del repositorio).
 3. En el menú lateral izquierdo, haz clic en **Secrets and variables** > **Actions**.
 4. Haz clic en el botón verde **New repository secret**.
