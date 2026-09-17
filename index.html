@@ -3853,46 +3853,34 @@
           console.log('✅ Archivo JSON local cargado correctamente.');
         }
       } catch (err) {
-        console.log('ℹ️ Usando datos de APIs y Firebase.');
+        console.log('ℹ️ Usando datos de Firebase / fallback.');
       }
 
-      // 2. GENSHIN IMPACT: Armas y Artefactos en ESPAÑOL (vía GenshinDev con Proxy CORS)
+      // 2. GENSHIN IMPACT: Carga directa sin proxy problemático
       try {
-        const proxy = 'https://corsproxy.io/?';
-        
-        // Armas Genshin
-        const gRes = await fetch(proxy + encodeURIComponent('https://api.genshin.dev/weapons'));
+        const gRes = await fetch('https://api.genshin.dev/weapons');
         if (gRes.ok) {
-          const gWeaponsSlugs = await gRes.json();
-          const weaponPromises = gWeaponsSlugs.map(async (slug) => {
-            try {
-              const wDetail = await fetch(proxy + encodeURIComponent(`https://api.genshin.dev/weapons/${slug}?lang=es`));
-              return wDetail.ok ? (await wDetail.json()).name : null;
-            } catch (e) { return null; }
-          });
-          const spanishWeapons = (await Promise.all(weaponPromises)).filter(Boolean);
-          equipmentCatalog.genshin.weapons = Array.from(new Set([...(equipmentCatalog.genshin.weapons || []), ...spanishWeapons]));
+          const gWeapons = await gRes.json();
+          equipmentCatalog.genshin.weapons = Array.from(new Set([
+            ...(equipmentCatalog.genshin.weapons || []),
+            ...gWeapons
+          ]));
         }
 
-        // Artefactos Genshin
-        const gArtRes = await fetch(proxy + encodeURIComponent('https://api.genshin.dev/artifacts'));
+        const gArtRes = await fetch('https://api.genshin.dev/artifacts');
         if (gArtRes.ok) {
-          const gArtSlugs = await gArtRes.json();
-          const artPromises = gArtSlugs.map(async (slug) => {
-            try {
-              const aDetail = await fetch(proxy + encodeURIComponent(`https://api.genshin.dev/artifacts/${slug}?lang=es`));
-              return aDetail.ok ? (await aDetail.json()).name : null;
-            } catch (e) { return null; }
-          });
-          const spanishArtifacts = (await Promise.all(artPromises)).filter(Boolean);
-          equipmentCatalog.genshin.artifacts = Array.from(new Set([...(equipmentCatalog.genshin.artifacts || []), ...spanishArtifacts]));
-          console.log('✅ Armas y Artefactos de Genshin cargados en español.');
+          const gArts = await gArtRes.json();
+          equipmentCatalog.genshin.artifacts = Array.from(new Set([
+            ...(equipmentCatalog.genshin.artifacts || []),
+            ...gArts
+          ]));
+          console.log('✅ Armas y Artefactos de Genshin sincronizados.');
         }
       } catch (e) {
-        console.log('Usando datos locales para Genshin.');
+        console.log('ℹ️ Genshin external API no disponible, usando base de datos local.');
       }
 
-      // 3. HONKAI: STAR RAIL: Conos de Luz y Reliquias en ESPAÑOL
+      // 3. HONKAI: STAR RAIL: Conos de Luz y Reliquias
       try {
         const hsrRes = await fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json');
         if (hsrRes.ok) {
@@ -3909,23 +3897,23 @@
           console.log('✅ Conos de luz y Reliquias de HSR cargados.');
         }
       } catch (e) {
-        console.log('Usando datos locales para HSR.');
+        console.log('ℹ️ HSR external API no disponible, usando base de datos local.');
       }
 
-      // 4. ZENLESS ZONE ZERO: Motores y Discos en ESPAÑOL
+      // 4. ZENLESS ZONE ZERO: Carga segura
       try {
-        const zzzRes = await fetch('https://raw.githubusercontent.com/site-a/zzz-data/main/es/wengines.json');
+        const zzzRes = await fetch('https://raw.githubusercontent.com/Aki-S/zzz-data/main/es/wengines.json');
         if (zzzRes.ok) {
           const wEnginesData = await zzzRes.json();
           const onlineEngines = Object.values(wEnginesData).map(w => w.name || w);
           equipmentCatalog.zzz.wEngines = Array.from(new Set([...(equipmentCatalog.zzz.wEngines || []), ...onlineEngines]));
-          console.log('✅ Motores y Discos de ZZZ cargados.');
+          console.log('✅ Motores de ZZZ cargados.');
         }
       } catch (e) {
-        console.log('Usando datos locales para ZZZ.');
+        console.log('ℹ️ ZZZ external API no disponible, usando base de datos local.');
       }
 
-      // 5. Actualizar los <datalist>
+      // 5. Actualizar los datalists
       const currentGame = document.getElementById('uGame')?.value || 'genshin';
       updateEquipmentDatalists(currentGame);
     });
