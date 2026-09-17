@@ -9,7 +9,12 @@
     "sync:dry-run": "node scripts/sync-banners.js --dry-run",
     "sync:banners": "node scripts/sync-banners.js",
     "sync:library": "node scripts/sync-library.js",
-    "sync:all": "node scripts/sync-banners.js && node scripts/sync-library.js"
+    "sync:all": "node scripts/sync-banners.js && node scripts/sync-library.js",
+    "sync:banners": "node scripts/sync-banners.js",
+    "sync:library": "node scripts/sync-library.js",
+    "sync:builds": "node scripts/sync-builds.js",
+    "sync:all": "node scripts/sync-banners.js && node scripts/sync-library.js && node scripts/sync-builds.js"
+}
   },
   "keywords": [
     "gacha",
