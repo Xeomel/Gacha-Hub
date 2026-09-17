@@ -1,7 +1,6 @@
 import admin from 'firebase-admin';
 import https from 'https';
 
-// Inicializar Firebase Admin SDK
 if (!admin.apps.length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   admin.initializeApp({
@@ -11,7 +10,6 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Configuración de endpoints usando API MediaWiki estándar
 const WIKI_SOURCES = [
   { game: 'genshin', host: 'genshin-impact.fandom.com', category: 'Category:Playable_Characters' },
   { game: 'hsr', host: 'honkai-star-rail.fandom.com', category: 'Category:Playable_Characters' },
@@ -44,6 +42,31 @@ function fetchJson(url) {
     req.on('error', () => resolve(null));
     req.end();
   });
+}
+
+// Extrae stats / builds básicas consultando la página individual del personaje
+async function fetchCharacterDetails(host, name) {
+  try {
+    const url = `https://${host}/api.php?action=parse&page=${encodeURIComponent(name)}&prop=text&format=json`;
+    const data = await fetchJson(url);
+    const html = data?.parse?.text?.['*'] || '';
+
+    // Buscar fragmentos o texto relevante sobre Stats / Artefactos
+    if (!html) return "Stats por definir.";
+
+    // Extraer texto limpio omitiendo etiquetas HTML
+    const cleanText = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+
+    // Intenta localizar secciones clave como 'Build', 'Stats' o 'Relics'
+    const match = cleanText.match(/(?:Recommended Stats|Build|Stat Priority|Stats)[:\s]+([^.]+)/i);
+    if (match && match[1]) {
+      return match[1].trim().substring(0, 150);
+    }
+
+    return "Ataque % / Prob. Crítica / Daño Crítico";
+  } catch {
+    return "Ataque % / Prob. Crítica / Daño Crítico";
+  }
 }
 
 async function getCategoryMembers(host, category) {
@@ -84,10 +107,12 @@ async function fetchAllCharacters() {
     console.log(`  └ ${names.length} personajes encontrados.`);
 
     for (const name of names) {
+      // Obtener detalles de stats para cada personaje
+      const targetStats = await fetchCharacterDetails(source.host, name);
       allList.push({
         name,
         game: source.game,
-        targetStats: `Stats recomendados según la wiki de ${source.game.toUpperCase()}.`
+        targetStats
       });
     }
   }
@@ -116,13 +141,6 @@ async function syncBuilds() {
       }
     });
 
-    // Eliminar 'Agent' de Firestore si existía
-    if (existingBuildsMap.has('agent')) {
-      const agentDoc = existingBuildsMap.get('agent');
-      await db.collection('builds').doc(agentDoc.id).delete();
-      console.log("🧹 Se eliminó el registro 'Agent'.");
-    }
-
     let createdCount = 0;
     let updatedCount = 0;
 
@@ -132,6 +150,7 @@ async function syncBuilds() {
       if (existingBuildsMap.has(key)) {
         const existing = existingBuildsMap.get(key);
         await db.collection('builds').doc(existing.id).update({
+          targetStats: item.targetStats,
           updatedAt: Date.now()
         });
         updatedCount++;
@@ -151,7 +170,7 @@ async function syncBuilds() {
       }
     }
 
-    console.log(`🎉 Finalizado: ${createdCount} creados | ${updatedCount} existentes verificados.`);
+    console.log(`🎉 Finalizado: ${createdCount} creados | ${updatedCount} actualizados con stats.`);
   } catch (error) {
     console.error("❌ Error en la ejecución:", error);
     process.exit(1);
