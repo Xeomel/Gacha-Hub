@@ -5,15 +5,10 @@ on:
     - cron: '0 3 * * *'
   workflow_dispatch:
 
-# Otorga permisos de escritura al bot de GitHub Actions
-permissions:
-  contents: write
-
 jobs:
   sync-builds:
-    name: Sincronizar Sugerencias de Builds
+    name: Sincronizar Base de Builds
     runs-on: ubuntu-latest
-    timeout-minutes: 10
 
     steps:
       - name: Descargar repositorio
@@ -28,13 +23,7 @@ jobs:
       - name: Instalar dependencias
         run: npm install
 
-      - name: Generar archivo de sugerencias
+      - name: Ejecutar sincronización de builds en Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: node scripts/sync-builds.js
-
-      - name: Guardar cambios en GitHub
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/build-suggestions.json
-          git commit -m "🤖 Actualización automática de sugerencias del meta" || exit 0
-          git push
