@@ -1,7 +1,7 @@
 import admin from 'firebase-admin';
 import https from 'https';
 
-// Inicializar Firebase Admin SDK desde los secrets de GitHub
+// Inicializar Firebase Admin SDK
 if (!admin.apps.length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   admin.initializeApp({
@@ -11,77 +11,61 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Categorías oficiales de personajes jugables en Fandom
-const WIKI_CATEGORIES = [
-  { game: 'genshin', host: 'genshin-impact.fandom.com', category: 'Category:Playable_characters' },
-  { game: 'hsr', host: 'honkai-star-rail.fandom.com', category: 'Category:Playable_characters' },
-  { game: 'zzz', host: 'zenless-zone-zero.fandom.com', category: 'Category:Playable_agents' }
+// Configuración de endpoints usando Cargo Query en las wikis
+const WIKI_CARGO_SOURCES = [
+  {
+    game: 'genshin',
+    host: 'genshin-impact.fandom.com',
+    url: 'https://genshin-impact.fandom.com/api.php?action=cargoquery&tables=characters&fields=name&where=is_playable%3D1&limit=500&format=json'
+  },
+  {
+    game: 'hsr',
+    host: 'honkai-star-rail.fandom.com',
+    url: 'https://honkai-star-rail.fandom.com/api.php?action=cargoquery&tables=characters&fields=name&where=is_playable%3D1&limit=500&format=json'
+  },
+  {
+    game: 'zzz',
+    host: 'zenless-zone-zero.fandom.com',
+    url: 'https://zenless-zone-zero.fandom.com/api.php?action=cargoquery&tables=agents&fields=name&limit=500&format=json'
+  }
 ];
 
-const IGNORE_TITLES = ['Agent', 'Playable Characters', 'Category:', 'Characters', 'List of', 'Traveler'];
-
 function fetchJson(url) {
-  return new Promise((resolve, reject) => {
-    const options = {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) GachaHubBot/1.0'
+  return new Promise((resolve) => {
+    https.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' } }, (res) => {
+      // Manejar redirecciones 301 / 302
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return resolve(fetchJson(res.headers.location));
       }
-    };
-    https.get(url, options, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
         try {
           resolve(JSON.parse(data));
-        } catch (e) {
-          reject(e);
+        } catch {
+          resolve(null);
         }
       });
-    }).on('error', reject);
+    }).on('error', () => resolve(null));
   });
-}
-
-async function getCategoryMembers(host, category) {
-  const members = [];
-  let cmcontinue = '';
-
-  try {
-    do {
-      const url = `https://${host}/api.php?action=query&list=categorymembers&cmtitle=${encodeURIComponent(category)}&cmlimit=500&format=json${cmcontinue ? `&cmcontinue=${cmcontinue}` : ''}`;
-      const data = await fetchJson(url);
-      const items = data.query?.categorymembers || [];
-
-      for (const item of items) {
-        const title = item.title ? item.title.trim() : '';
-        const shouldIgnore = IGNORE_TITLES.some(bad => title.toLowerCase() === bad.toLowerCase());
-
-        if (item.ns === 0 && !title.includes('/') && !shouldIgnore) {
-          members.push(title);
-        }
-      }
-
-      cmcontinue = data['continue']?.cmcontinue || '';
-    } while (cmcontinue);
-  } catch (err) {
-    console.error(`❌ Error al consultar ${category} en ${host}:`, err.message);
-  }
-
-  return members;
 }
 
 async function fetchAllCharacters() {
   const allList = [];
 
-  for (const source of WIKI_CATEGORIES) {
-    console.log(`🌐 Consultando API Fandom de ${source.game.toUpperCase()} (${source.host})...`);
-    const names = await getCategoryMembers(source.host, source.category);
+  for (const source of WIKI_CARGO_SOURCES) {
+    console.log(`🌐 Consultando base de datos Cargo de ${source.game.toUpperCase()}...`);
+    const data = await fetchJson(source.url);
+    const results = data?.cargoquery || [];
+    
+    const names = results.map(item => item.title?.name).filter(Boolean);
     console.log(`  └ ${names.length} personajes encontrados.`);
 
     for (const name of names) {
       allList.push({
         name,
         game: source.game,
-        targetStats: `Stats recomendados según la wiki de ${source.game.toUpperCase()}.`
+        targetStats: `Stats recomendados según la wiki oficial de ${source.game.toUpperCase()}.`
       });
     }
   }
@@ -101,7 +85,6 @@ async function syncBuilds() {
       return;
     }
 
-    // Cargar las builds que ya existen en Firestore
     const snapshot = await db.collection('builds').get();
     const existingBuildsMap = new Map();
     snapshot.forEach(doc => {
@@ -110,13 +93,6 @@ async function syncBuilds() {
         existingBuildsMap.set(data.name.toLowerCase().trim(), { id: doc.id, ...data });
       }
     });
-
-    // Limpiar 'Agent' si existía
-    if (existingBuildsMap.has('agent')) {
-      const agentDoc = existingBuildsMap.get('agent');
-      await db.collection('builds').doc(agentDoc.id).delete();
-      console.log("🧹 Se eliminó la entrada inválida 'Agent'.");
-    }
 
     let createdCount = 0;
     let updatedCount = 0;
