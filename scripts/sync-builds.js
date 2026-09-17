@@ -10,12 +10,15 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Categorías oficiales en Fandom de cada juego
+// Categorías oficiales de personajes jugables en Fandom
 const WIKI_CATEGORIES = [
   { game: 'genshin', host: 'genshin-impact.fandom.com', category: 'Category:Playable_characters' },
   { game: 'hsr', host: 'honkai-star-rail.fandom.com', category: 'Category:Playable_characters' },
-  { game: 'zzz', host: 'zenless-zone-zero.fandom.com', category: 'Category:Playable_characters' }
+  { game: 'zzz', host: 'zenless-zone-zero.fandom.com', category: 'Category:Playable_agents' }
 ];
+
+// Nombres o fragmentos de páginas a ignorar (no son personajes)
+const IGNORE_TITLES = ['Agent', 'Playable Characters', 'Category:', 'Characters', 'List of'];
 
 async function getCategoryMembers(host, category) {
   const members = [];
@@ -31,16 +34,18 @@ async function getCategoryMembers(host, category) {
       const items = data.query?.categorymembers || [];
 
       for (const item of items) {
-        // Filtrar subcategorías u otras páginas del sistema
-        if (item.ns === 0 && !item.title.includes('/')) {
-          members.push(item.title);
+        const title = item.title ? item.title.trim() : '';
+        const shouldIgnore = IGNORE_TITLES.some(bad => title.toLowerCase().includes(bad.toLowerCase()));
+
+        if (item.ns === 0 && !title.includes('/') && !shouldIgnore) {
+          members.push(title);
         }
       }
 
       cmcontinue = data['continue']?.cmcontinue || '';
     } while (cmcontinue);
   } catch (err) {
-    console.error(`Error obteniendo categoría ${category} de ${host}:`, err.message);
+    console.error(`Error al consultar ${category} en ${host}:`, err.message);
   }
 
   return members;
@@ -50,15 +55,15 @@ async function fetchAllCharacters() {
   const allList = [];
 
   for (const source of WIKI_CATEGORIES) {
-    console.log(`🌐 Obteniendo lista completa de personajes para ${source.game}...`);
+    console.log(`🌐 Consultando categoría de ${source.game.toUpperCase()}...`);
     const names = await getCategoryMembers(source.host, source.category);
-    console.log(`  └ Encontrados ${names.length} personajes en ${source.game}.`);
+    console.log(`  └ ${names.length} personajes encontrados.`);
 
     for (const name of names) {
       allList.push({
         name,
         game: source.game,
-        targetStats: `Stats objetivo recomendados según la wiki de ${source.game.toUpperCase()}.`
+        targetStats: `Stats recomendados según la wiki oficial de ${source.game.toUpperCase()}.`
       });
     }
   }
@@ -67,18 +72,18 @@ async function fetchAllCharacters() {
 }
 
 async function syncBuilds() {
-  console.log("🔄 Iniciando sincronización masiva de todos los personajes...");
+  console.log("🔄 Iniciando importación masiva en Firestore...");
 
   try {
     const fetchedBuilds = await fetchAllCharacters();
-    console.log(`📊 Total acumulado de personajes extraídos: ${fetchedBuilds.length}`);
+    console.log(`📊 Total de personajes a procesar: ${fetchedBuilds.length}`);
 
     if (fetchedBuilds.length === 0) {
-      console.log("⚠️ No se obtuvieron personajes. Revisa la conexión con las wikis.");
+      console.log("⚠️ No se obtuvieron datos de la wiki.");
       return;
     }
 
-    // Obtener las builds que ya existen en tu Firestore para evitar duplicados
+    // Cargar builds existentes en Firestore para no duplicar
     const snapshot = await db.collection('builds').get();
     const existingBuildsMap = new Map();
     snapshot.forEach(doc => {
@@ -88,21 +93,29 @@ async function syncBuilds() {
       }
     });
 
+    // Eliminar el registro erróneo "Agent" si se creó previamente en Firestore
+    if (existingBuildsMap.has('agent')) {
+      const agentDoc = existingBuildsMap.get('agent');
+      await db.collection('builds').doc(agentDoc.id).delete();
+      console.log("🧹 Se eliminó el registro no deseado 'Agent' de Firestore.");
+    }
+
     let createdCount = 0;
     let updatedCount = 0;
 
+    // Procesar en lotes (Batches) para asegurar escritura limpia en Firebase
     for (const item of fetchedBuilds) {
       const key = item.name.toLowerCase().trim();
 
       if (existingBuildsMap.has(key)) {
-        // SI YA EXISTE: Preserva tus fotos y notas guardadas, solo actualiza timestamp
+        // Ya existe: no sobrescribe fotos ni notas
         const existing = existingBuildsMap.get(key);
         await db.collection('builds').doc(existing.id).update({
           updatedAt: Date.now()
         });
         updatedCount++;
       } else {
-        // SI ES NUEVO: Crea la plantilla base
+        // Es un personaje nuevo: crea documento base
         await db.collection('builds').add({
           name: item.name,
           game: item.game,
@@ -110,7 +123,7 @@ async function syncBuilds() {
           portrait: '',
           targetStats: item.targetStats,
           generalStats: '',
-          notes: 'Personaje importado automáticamente desde la wiki.',
+          notes: 'Personaje importado automáticamente.',
           createdAt: Date.now(),
           updatedAt: Date.now()
         });
@@ -118,9 +131,9 @@ async function syncBuilds() {
       }
     }
 
-    console.log(`🎉 Sincronización completada: ${createdCount} creados, ${updatedCount} existentes verificados.`);
+    console.log(`🎉 ¡Proceso finalizado! Creados: ${createdCount} | Existentes verificados: ${updatedCount}`);
   } catch (error) {
-    console.error("❌ Error durante la sincronización masiva:", error);
+    console.error("❌ Error en el proceso de sincronización:", error);
     process.exit(1);
   }
 }
