@@ -2,8 +2,12 @@ name: Auto Sync Build Suggestions
 
 on:
   schedule:
-    - cron: '0 3 * * *' # 1 vez al día
-  workflow_dispatch: # Ejecución manual
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+# Otorga permisos de escritura al bot de GitHub Actions
+permissions:
+  contents: write
 
 jobs:
   sync-builds:
