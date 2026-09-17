@@ -1,6 +1,7 @@
 import admin from 'firebase-admin';
+import https from 'https';
 
-// Inicializar Firebase Admin SDK
+// Inicializar Firebase Admin SDK desde los secrets de GitHub
 if (!admin.apps.length) {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   admin.initializeApp({
@@ -17,8 +18,28 @@ const WIKI_CATEGORIES = [
   { game: 'zzz', host: 'zenless-zone-zero.fandom.com', category: 'Category:Playable_agents' }
 ];
 
-// Nombres o fragmentos de páginas a ignorar (no son personajes)
-const IGNORE_TITLES = ['Agent', 'Playable Characters', 'Category:', 'Characters', 'List of'];
+const IGNORE_TITLES = ['Agent', 'Playable Characters', 'Category:', 'Characters', 'List of', 'Traveler'];
+
+function fetchJson(url) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) GachaHubBot/1.0'
+      }
+    };
+    https.get(url, options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          reject(e);
+        }
+      });
+    }).on('error', reject);
+  });
+}
 
 async function getCategoryMembers(host, category) {
   const members = [];
@@ -27,15 +48,12 @@ async function getCategoryMembers(host, category) {
   try {
     do {
       const url = `https://${host}/api.php?action=query&list=categorymembers&cmtitle=${encodeURIComponent(category)}&cmlimit=500&format=json${cmcontinue ? `&cmcontinue=${cmcontinue}` : ''}`;
-      const res = await fetch(url);
-      if (!res.ok) break;
-
-      const data = await res.json();
+      const data = await fetchJson(url);
       const items = data.query?.categorymembers || [];
 
       for (const item of items) {
         const title = item.title ? item.title.trim() : '';
-        const shouldIgnore = IGNORE_TITLES.some(bad => title.toLowerCase().includes(bad.toLowerCase()));
+        const shouldIgnore = IGNORE_TITLES.some(bad => title.toLowerCase() === bad.toLowerCase());
 
         if (item.ns === 0 && !title.includes('/') && !shouldIgnore) {
           members.push(title);
@@ -45,7 +63,7 @@ async function getCategoryMembers(host, category) {
       cmcontinue = data['continue']?.cmcontinue || '';
     } while (cmcontinue);
   } catch (err) {
-    console.error(`Error al consultar ${category} en ${host}:`, err.message);
+    console.error(`❌ Error al consultar ${category} en ${host}:`, err.message);
   }
 
   return members;
@@ -55,7 +73,7 @@ async function fetchAllCharacters() {
   const allList = [];
 
   for (const source of WIKI_CATEGORIES) {
-    console.log(`🌐 Consultando categoría de ${source.game.toUpperCase()}...`);
+    console.log(`🌐 Consultando API Fandom de ${source.game.toUpperCase()} (${source.host})...`);
     const names = await getCategoryMembers(source.host, source.category);
     console.log(`  └ ${names.length} personajes encontrados.`);
 
@@ -63,7 +81,7 @@ async function fetchAllCharacters() {
       allList.push({
         name,
         game: source.game,
-        targetStats: `Stats recomendados según la wiki oficial de ${source.game.toUpperCase()}.`
+        targetStats: `Stats recomendados según la wiki de ${source.game.toUpperCase()}.`
       });
     }
   }
@@ -76,14 +94,14 @@ async function syncBuilds() {
 
   try {
     const fetchedBuilds = await fetchAllCharacters();
-    console.log(`📊 Total de personajes a procesar: ${fetchedBuilds.length}`);
+    console.log(`📊 Total acumulado de personajes a procesar: ${fetchedBuilds.length}`);
 
     if (fetchedBuilds.length === 0) {
-      console.log("⚠️ No se obtuvieron datos de la wiki.");
+      console.log("⚠️ No se obtuvieron personajes de la wiki.");
       return;
     }
 
-    // Cargar builds existentes en Firestore para no duplicar
+    // Cargar las builds que ya existen en Firestore
     const snapshot = await db.collection('builds').get();
     const existingBuildsMap = new Map();
     snapshot.forEach(doc => {
@@ -93,29 +111,26 @@ async function syncBuilds() {
       }
     });
 
-    // Eliminar el registro erróneo "Agent" si se creó previamente en Firestore
+    // Limpiar 'Agent' si existía
     if (existingBuildsMap.has('agent')) {
       const agentDoc = existingBuildsMap.get('agent');
       await db.collection('builds').doc(agentDoc.id).delete();
-      console.log("🧹 Se eliminó el registro no deseado 'Agent' de Firestore.");
+      console.log("🧹 Se eliminó la entrada inválida 'Agent'.");
     }
 
     let createdCount = 0;
     let updatedCount = 0;
 
-    // Procesar en lotes (Batches) para asegurar escritura limpia en Firebase
     for (const item of fetchedBuilds) {
       const key = item.name.toLowerCase().trim();
 
       if (existingBuildsMap.has(key)) {
-        // Ya existe: no sobrescribe fotos ni notas
         const existing = existingBuildsMap.get(key);
         await db.collection('builds').doc(existing.id).update({
           updatedAt: Date.now()
         });
         updatedCount++;
       } else {
-        // Es un personaje nuevo: crea documento base
         await db.collection('builds').add({
           name: item.name,
           game: item.game,
@@ -131,9 +146,9 @@ async function syncBuilds() {
       }
     }
 
-    console.log(`🎉 ¡Proceso finalizado! Creados: ${createdCount} | Existentes verificados: ${updatedCount}`);
+    console.log(`🎉 Finalizado: ${createdCount} personajes creados | ${updatedCount} existentes verificados.`);
   } catch (error) {
-    console.error("❌ Error en el proceso de sincronización:", error);
+    console.error("❌ Error en la ejecución:", error);
     process.exit(1);
   }
 }
