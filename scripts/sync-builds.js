@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+import admin from 'firebase-admin';
 
 // Inicializar Firebase Admin SDK desde los secrets de GitHub
 if (!admin.apps.length) {
