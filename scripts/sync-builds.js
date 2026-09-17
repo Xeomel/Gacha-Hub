@@ -10,78 +10,75 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 
-// Fuentes de wikis para extraer personajes
-const WIKI_SOURCES = [
-  { game: 'genshin', host: 'genshin-impact.fandom.com', page: 'Characters/List' },
-  { game: 'hsr', host: 'honkai-star-rail.fandom.com', page: 'Characters/List' },
-  { game: 'zzz', host: 'zenless-zone-zero.fandom.com', page: 'Agents' }
+// Categorías oficiales en Fandom de cada juego
+const WIKI_CATEGORIES = [
+  { game: 'genshin', host: 'genshin-impact.fandom.com', category: 'Category:Playable_characters' },
+  { game: 'hsr', host: 'honkai-star-rail.fandom.com', category: 'Category:Playable_characters' },
+  { game: 'zzz', host: 'zenless-zone-zero.fandom.com', category: 'Category:Playable_characters' }
 ];
 
-async function fetchAllCharactersFromWikis() {
-  const allCharacters = [];
+async function getCategoryMembers(host, category) {
+  const members = [];
+  let cmcontinue = '';
 
-  for (const source of WIKI_SOURCES) {
-    try {
-      console.log(`🌐 Buscando lista completa de personajes para ${source.game}...`);
-      const apiUrl = `https://${source.host}/api.php?action=parse&page=${encodeURIComponent(source.page)}&prop=text&format=json`;
-      const res = await fetch(apiUrl);
-      if (!res.ok) continue;
+  try {
+    do {
+      const url = `https://${host}/api.php?action=query&list=categorymembers&cmtitle=${encodeURIComponent(category)}&cmlimit=500&format=json${cmcontinue ? `&cmcontinue=${cmcontinue}` : ''}`;
+      const res = await fetch(url);
+      if (!res.ok) break;
 
       const data = await res.json();
-      const html = data.parse?.text?.['*'];
-      if (!html) continue;
+      const items = data.query?.categorymembers || [];
 
-      // Extraer nombres de personajes del HTML de la wiki
-      const names = extractNamesFromHtml(html);
-      console.log(`  └ Encontrados ${names.length} personajes en ${source.game}.`);
-
-      for (const name of names) {
-        allCharacters.push({
-          name: name,
-          game: source.game,
-          targetStats: `Stats objetivo recomendados según la wiki de ${source.game.toUpperCase()}.`
-        });
+      for (const item of items) {
+        // Filtrar subcategorías u otras páginas del sistema
+        if (item.ns === 0 && !item.title.includes('/')) {
+          members.push(item.title);
+        }
       }
-    } catch (err) {
-      console.error(`Error procesando ${source.game}:`, err.message);
-    }
+
+      cmcontinue = data['continue']?.cmcontinue || '';
+    } while (cmcontinue);
+  } catch (err) {
+    console.error(`Error obteniendo categoría ${category} de ${host}:`, err.message);
   }
 
-  return allCharacters;
+  return members;
 }
 
-function extractNamesFromHtml(html) {
-  // Expresión para buscar enlaces a nombres de personajes en las tablas de la wiki
-  const nameRegex = /title="([^"]+)"/g;
-  const set = new Set();
-  let match;
+async function fetchAllCharacters() {
+  const allList = [];
 
-  while ((match = nameRegex.exec(html)) !== null) {
-    const val = match[1].trim();
-    // Filtrar páginas de sistema o categorías no relevantes
-    if (
-      val &&
-      !val.includes(':') &&
-      !val.includes('List') &&
-      !val.includes('Category') &&
-      !val.includes('Edit') &&
-      val.length < 30
-    ) {
-      set.add(val);
+  for (const source of WIKI_CATEGORIES) {
+    console.log(`🌐 Obteniendo lista completa de personajes para ${source.game}...`);
+    const names = await getCategoryMembers(source.host, source.category);
+    console.log(`  └ Encontrados ${names.length} personajes en ${source.game}.`);
+
+    for (const name of names) {
+      allList.push({
+        name,
+        game: source.game,
+        targetStats: `Stats objetivo recomendados según la wiki de ${source.game.toUpperCase()}.`
+      });
     }
   }
 
-  return Array.from(set);
+  return allList;
 }
 
 async function syncBuilds() {
   console.log("🔄 Iniciando sincronización masiva de todos los personajes...");
 
   try {
-    const fetchedBuilds = await fetchAllCharactersFromWikis();
-    console.log(`📊 Total de personajes procesados: ${fetchedBuilds.length}`);
+    const fetchedBuilds = await fetchAllCharacters();
+    console.log(`📊 Total acumulado de personajes extraídos: ${fetchedBuilds.length}`);
 
-    // Obtener las builds que ya existen en tu Firestore para no duplicar ni sobreescribir tus fotos
+    if (fetchedBuilds.length === 0) {
+      console.log("⚠️ No se obtuvieron personajes. Revisa la conexión con las wikis.");
+      return;
+    }
+
+    // Obtener las builds que ya existen en tu Firestore para evitar duplicados
     const snapshot = await db.collection('builds').get();
     const existingBuildsMap = new Map();
     snapshot.forEach(doc => {
@@ -98,22 +95,22 @@ async function syncBuilds() {
       const key = item.name.toLowerCase().trim();
 
       if (existingBuildsMap.has(key)) {
-        // SI YA EXISTE: No sobrescribe tu foto ni tus notas personales, solo actualiza la fecha
+        // SI YA EXISTE: Preserva tus fotos y notas guardadas, solo actualiza timestamp
         const existing = existingBuildsMap.get(key);
         await db.collection('builds').doc(existing.id).update({
           updatedAt: Date.now()
         });
         updatedCount++;
       } else {
-        // SI ES UN PERSONAJE NUEVO: Crea la plantilla base lista para que le pongas foto
+        // SI ES NUEVO: Crea la plantilla base
         await db.collection('builds').add({
           name: item.name,
           game: item.game,
           color: item.game === 'hsr' ? '#b98cea' : item.game === 'zzz' ? '#6fa9e6' : '#f2c14e',
-          portrait: '', // Queda libre para tu imagen
+          portrait: '',
           targetStats: item.targetStats,
           generalStats: '',
-          notes: 'Personaje detectado e importado automáticamente.',
+          notes: 'Personaje importado automáticamente desde la wiki.',
           createdAt: Date.now(),
           updatedAt: Date.now()
         });
@@ -121,7 +118,7 @@ async function syncBuilds() {
       }
     }
 
-    console.log(`🎉 Sincronización completada: ${createdCount} creados, ${updatedCount} verificados.`);
+    console.log(`🎉 Sincronización completada: ${createdCount} creados, ${updatedCount} existentes verificados.`);
   } catch (error) {
     console.error("❌ Error durante la sincronización masiva:", error);
     process.exit(1);
