@@ -3844,71 +3844,89 @@
     };
 
 document.addEventListener('DOMContentLoaded', async () => {
-      // 1. Cargar la base de datos local (Genshin, ZZZ, UMA, HSR)
-      try {
-        const res = await fetch('./data/equipment-database.json');
-        if (res.ok) {
-          const localData = await res.json();
-          equipmentCatalog = {
-            genshin: {
-              weapons: localData.genshin?.weapons || [],
-              artifacts: localData.genshin?.artifacts || []
-            },
-            hsr: {
-              lightCones: localData.hsr?.lightCones || [],
-              relics: localData.hsr?.relics || [],
-              planarOrnaments: localData.hsr?.planarOrnaments || []
-            },
-            zzz: {
-              wEngines: localData.zzz?.wEngines || [],
-              driveDiscs: localData.zzz?.driveDiscs || []
-            },
-            uma: {
-              weapons: localData.uma?.weapons || [],
-              artifacts: localData.uma?.artifacts || []
-            }
-          };
-          console.log('✅ Base de datos local cargada correctamente.');
+  // Normalizador defensivo de catálogos
+  const populateGameCatalog = (targetGame, sourceData) => {
+    if (!sourceData) return;
+
+    // Caso 1: Estructura anidada { genshin: { weapons: [...], artifacts: [...] } }
+    if (sourceData[targetGame]) {
+      const g = sourceData[targetGame];
+      if (Array.isArray(g.weapons)) equipmentCatalog[targetGame].weapons.push(...g.weapons);
+      if (Array.isArray(g.artifacts)) equipmentCatalog[targetGame].artifacts.push(...g.artifacts);
+      if (Array.isArray(g.wEngines)) equipmentCatalog[targetGame].wEngines.push(...g.wEngines);
+      if (Array.isArray(g.driveDiscs)) equipmentCatalog[targetGame].driveDiscs.push(...g.driveDiscs);
+      if (Array.isArray(g.lightCones)) equipmentCatalog[targetGame].lightCones.push(...g.lightCones);
+      if (Array.isArray(g.relics)) equipmentCatalog[targetGame].relics.push(...g.relics);
+    }
+
+    // Caso 2: Claves planas { genshin_weapons: [...], zzz_wEngines: [...] }
+    Object.keys(sourceData).forEach(key => {
+      if (key.startsWith(targetGame)) {
+        const val = sourceData[key];
+        if (Array.isArray(val)) {
+          if (key.includes('weapon')) equipmentCatalog[targetGame].weapons?.push(...val);
+          if (key.includes('artifact')) equipmentCatalog[targetGame].artifacts?.push(...val);
+          if (key.includes('wEngine') || key.includes('engine')) equipmentCatalog[targetGame].wEngines?.push(...val);
+          if (key.includes('disc')) equipmentCatalog[targetGame].driveDiscs?.push(...val);
         }
-      } catch (err) {
-        console.log('ℹ️ Usando datos en memoria.');
       }
-
-      // 2. HONKAI: STAR RAIL — Única API estática 100% estable sin bloqueos CORS
-      try {
-        const [hsrRes, hsrRelicRes] = await Promise.all([
-          fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json'),
-          fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/relics.json')
-        ]);
-
-        if (hsrRes.ok) {
-          const hsrConesObj = await hsrRes.json();
-          const onlineCones = Object.values(hsrConesObj).map(c => c.name);
-          equipmentCatalog.hsr.lightCones = Array.from(new Set([...equipmentCatalog.hsr.lightCones, ...onlineCones]));
-        }
-
-        if (hsrRelicRes.ok) {
-          const hsrRelicsObj = await hsrRelicRes.json();
-          const onlineRelics = Object.values(hsrRelicsObj).map(r => r.name);
-          equipmentCatalog.hsr.relics = Array.from(new Set([...equipmentCatalog.hsr.relics, ...onlineRelics]));
-          console.log('✅ HSR: Conos y Reliquias actualizados por API.');
-        }
-      } catch (e) {
-        console.log('ℹ️ HSR: Usando catálogo local.');
-      }
-
-      // 3. Confirmación de catálogos locales activos (Genshin / ZZZ)
-      if (equipmentCatalog.genshin.weapons.length || equipmentCatalog.genshin.artifacts.length) {
-        console.log('✅ Genshin Impact: Equipamiento activo desde base local.');
-      }
-      if (equipmentCatalog.zzz.wEngines.length || equipmentCatalog.zzz.driveDiscs.length) {
-        console.log('✅ ZZZ: Equipamiento activo desde base local.');
-      }
-
-      // 4. Inicializar autocompletado en el formulario
-      const currentGame = document.getElementById('uGame')?.value || 'genshin';
-      updateEquipmentDatalists(currentGame);
     });
+
+    // Remover duplicados automáticamente y asegurar formato string
+    Object.keys(equipmentCatalog[targetGame]).forEach(prop => {
+      if (Array.isArray(equipmentCatalog[targetGame][prop])) {
+        equipmentCatalog[targetGame][prop] = Array.from(
+          new Set(equipmentCatalog[targetGame][prop].map(item => typeof item === 'string' ? item : item.name).filter(Boolean))
+        );
+      }
+    });
+  };
+
+  // 1. Cargar la base de datos local
+  try {
+    const res = await fetch('./data/equipment-database.json');
+    if (res.ok) {
+      const localData = await res.json();
+      
+      ['genshin', 'hsr', 'zzz', 'uma'].forEach(game => {
+        populateGameCatalog(game, localData);
+      });
+
+      console.log('✅ Base de datos local procesada y vinculada correctamente.');
+    } else {
+      console.warn('⚠️ No se encontró el archivo ./data/equipment-database.json (HTTP ' + res.status + ')');
+    }
+  } catch (err) {
+    console.error('❌ Error al parsear ./data/equipment-database.json:', err.message);
+  }
+
+  // 2. HONKAI: STAR RAIL — API Estática (Sin CORS / Estable)
+  try {
+    const [hsrRes, hsrRelicRes] = await Promise.all([
+      fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json'),
+      fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/relics.json')
+    ]);
+
+    if (hsrRes.ok) {
+      const hsrConesObj = await hsrRes.json();
+      const onlineCones = Object.values(hsrConesObj).map(c => c.name);
+      equipmentCatalog.hsr.lightCones = Array.from(new Set([...equipmentCatalog.hsr.lightCones, ...onlineCones]));
+    }
+
+    if (hsrRelicRes.ok) {
+      const hsrRelicsObj = await hsrRelicRes.json();
+      const onlineRelics = Object.values(hsrRelicsObj).map(r => r.name);
+      equipmentCatalog.hsr.relics = Array.from(new Set([...equipmentCatalog.hsr.relics, ...onlineRelics]));
+      console.log('✅ HSR: Conos y Reliquias actualizados por API.');
+    }
+  } catch (e) {
+    console.log('ℹ️ HSR: Usando catálogo local.');
+  }
+
+  // 3. Inicializar autocompletado UI
+  const currentGame = document.getElementById('uGame')?.value || 'genshin';
+  updateEquipmentDatalists(currentGame);
+});
     
     function updateEquipmentDatalists(game) {
       const weaponsDatalist = document.getElementById('weaponsOptions');
