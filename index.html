@@ -3874,7 +3874,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('ℹ️ Usando datos en memoria.');
       }
 
-      // 2. HONKAI: STAR RAIL — Carga Automática por API Estática (Español)
+      // 2. HONKAI: STAR RAIL — API Estática (Español)
       try {
         const [hsrRes, hsrRelicRes] = await Promise.all([
           fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json'),
@@ -3897,11 +3897,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('ℹ️ HSR: Usando catálogo local.');
       }
 
-      // 3. GENSHIN IMPACT — Carga Estática en Inglés (GenshinDb GitHub)
+      // 3. GENSHIN IMPACT — API Estática Dval.in
       try {
         const [gWeaponsRes, gArtifactsRes] = await Promise.all([
-          fetch('https://raw.githubusercontent.com/the-legendary-escorts/genshin-db/main/src/min/english/weapons.json'),
-          fetch('https://raw.githubusercontent.com/the-legendary-escorts/genshin-db/main/src/min/english/artifacts.json')
+          fetch('https://dval.in/data/es/weapons.json'),
+          fetch('https://dval.in/data/es/artifacts.json')
         ]);
 
         if (gWeaponsRes.ok) {
@@ -3914,13 +3914,36 @@ document.addEventListener('DOMContentLoaded', async () => {
           const gArtifactsData = await gArtifactsRes.json();
           const onlineArtifacts = Object.values(gArtifactsData).map(a => a.name || a).filter(Boolean);
           equipmentCatalog.genshin.artifacts = Array.from(new Set([...equipmentCatalog.genshin.artifacts, ...onlineArtifacts]));
-          console.log('✅ Genshin Impact: Armas y Artefactos sincronizados por API (Inglés).');
+          console.log('✅ Genshin Impact: Armas y Artefactos sincronizados.');
         }
       } catch (e) {
         console.log('ℹ️ Genshin Impact: Usando catálogo local.');
       }
 
-      // 4. Inicializar autocompletado en los formularios
+      // 4. ZENLESS ZONE ZERO — API Estática (Motores W-Engines y Discos)
+      try {
+        const [zzzEngineRes, zzzDiscRes] = await Promise.all([
+          fetch('https://raw.githubusercontent.com/K3V1N-L33/zzz-data/main/data/wengines.json'),
+          fetch('https://raw.githubusercontent.com/K3V1N-L33/zzz-data/main/data/discs.json')
+        ]);
+
+        if (zzzEngineRes.ok) {
+          const enginesData = await zzzEngineRes.json();
+          const onlineEngines = Object.values(enginesData).map(e => e.name || e).filter(Boolean);
+          equipmentCatalog.zzz.wEngines = Array.from(new Set([...equipmentCatalog.zzz.wEngines, ...onlineEngines]));
+        }
+
+        if (zzzDiscRes.ok) {
+          const discsData = await zzzDiscRes.json();
+          const onlineDiscs = Object.values(discsData).map(d => d.name || d).filter(Boolean);
+          equipmentCatalog.zzz.driveDiscs = Array.from(new Set([...equipmentCatalog.zzz.driveDiscs, ...onlineDiscs]));
+          console.log('✅ ZZZ: Motores y Discos sincronizados por API.');
+        }
+      } catch (e) {
+        console.log('ℹ️ ZZZ: Usando catálogo local.');
+      }
+
+      // 5. Inicializar autocompletado en el formulario
       const currentGame = document.getElementById('uGame')?.value || 'genshin';
       updateEquipmentDatalists(currentGame);
     });
