@@ -3197,33 +3197,78 @@
     function renderLibrary() {
       const gridEl = document.getElementById('gridLibrary');
       if (!gridEl) return;
-      const itemsOfType = libraryData.filter(i => i.type === currentLibType);
-      renderGameFilters('filtersLibrary', itemsOfType, 'library');
-      let filtered = activeGameFilter.library ? itemsOfType.filter(i => i.game === activeGameFilter.library) : itemsOfType;
+
+      // 1. Obtener elementos guardados en Firebase Firestore
+      let itemsFromDb = libraryData.filter(i => i.type === currentLibType);
+
+      // 2. Extraer los elementos del catálogo dinámico/local (equipmentCatalog)
+      let catalogItems = [];
+      const gameKey = activeGameFilter.library || null;
+      const gamesToProcess = gameKey ? [gameKey] : Object.keys(equipmentCatalog);
+
+      gamesToProcess.forEach(gKey => {
+        const cat = equipmentCatalog[gKey];
+        if (!cat) return;
+
+        if (currentLibType === 'weapon') {
+          const list = cat.weapons || cat.lightCones || cat.wEngines || [];
+          list.forEach(name => {
+            catalogItems.push({ id: `cat_${gKey}_${name}`, name, game: gKey, type: 'weapon', stats: 'Sincronizado de catálogo base' });
+          });
+        } else if (currentLibType === 'piece') {
+          const list = cat.artifacts || cat.relics || cat.driveDiscs || [];
+          list.forEach(name => {
+            catalogItems.push({ id: `cat_${gKey}_${name}`, name, game: gKey, type: 'piece', stats: 'Sincronizado de catálogo base' });
+          });
+        }
+      });
+
+      // 3. Unificar ambos orígenes evitando duplicados por nombre
+      const combined = [...itemsFromDb];
+      const existingNames = new Set(itemsFromDb.map(i => (i.name || '').toLowerCase()));
+
+      catalogItems.forEach(cItem => {
+        if (!existingNames.has(cItem.name.toLowerCase())) {
+          combined.push(cItem);
+        }
+      });
+
+      // 4. Aplicar filtro por juego activo
+      let filtered = gameKey ? combined.filter(i => i.game === gameKey) : combined;
+
+      // 5. Aplicar filtro por búsqueda de texto
       const q = searchQuery.library.trim().toLowerCase();
       if (q) filtered = filtered.filter(i => (i.name || '').toLowerCase().includes(q));
+
+      // 6. Ordenar alfabéticamente
+      filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+      // 7. Renderizar en la cuadrícula
       gridEl.innerHTML = '';
       if (filtered.length === 0) {
-        gridEl.innerHTML = `<div class="empty">${q ? 'No se encontraron elementos con ese nombre.' : 'No hay elementos guardados todavía.'}</div>`;
+        gridEl.innerHTML = `<div class="empty">${q ? 'No se encontraron elementos con ese nombre.' : 'No hay elementos para mostrar en esta categoría.'}</div>`;
         return;
       }
+
       filtered.forEach(i => {
         const game = getGameMeta(i.game);
         const card = document.createElement('article');
         card.className = 'card';
         card.style.setProperty('--game-color', game.color);
+        const isFromCatalog = i.id && i.id.startsWith('cat_');
+
         card.innerHTML = `
-      <div class="card-img" style="${i.image ? `background-image:url(${i.image})` : ''}">${i.image ? '' : 'sin imagen'}</div>
-      <div class="card-body">
-        ${badgeHtml(i.game)}
-        <h3>${escapeHtml(i.name)}</h3>
-        ${i.stats ? `<p class="notes">${escapeHtml(i.stats)}</p>` : ''}
-        <div class="card-actions admin-only" style="display:${isAdmin ? 'flex' : 'none'}">
-          <button class="icon-btn" data-edit-lib="${i.id}">✎ Editar</button>
-          <button class="icon-btn" data-del-lib="${i.id}">✕ Eliminar</button>
-        </div>
-      </div>
-    `;
+          <div class="card-img" style="${i.image ? `background-image:url(${i.image})` : ''}">${i.image ? '' : 'sin imagen'}</div>
+          <div class="card-body">
+            ${badgeHtml(i.game)}
+            <h3>${escapeHtml(i.name)}</h3>
+            ${i.stats ? `<p class="notes">${escapeHtml(i.stats)}</p>` : ''}
+            <div class="card-actions admin-only" style="display:${isAdmin && !isFromCatalog ? 'flex' : 'none'}">
+              <button class="icon-btn" data-edit-lib="${i.id}">✎ Editar</button>
+              <button class="icon-btn" data-del-lib="${i.id}">✕ Eliminar</button>
+            </div>
+          </div>
+        `;
         gridEl.appendChild(card);
       });
     }
@@ -3776,9 +3821,41 @@
     function renderLibPickerGrid(query) {
       const game = pickerCurrentGetGame();
       const q = (query || '').trim().toLowerCase();
-      let items = libraryData.filter(i => i.type === pickerCurrentType && i.game === game);
+      
+      // 1. Obtener elementos de Firebase Firestore
+      let itemsFromDb = libraryData.filter(i => i.type === pickerCurrentType && i.game === game);
+
+      // 2. Extraer elementos del catálogo dinámico/local
+      let catalogItems = [];
+      const cat = equipmentCatalog[game];
+      if (cat) {
+        if (pickerCurrentType === 'weapon') {
+          const list = cat.weapons || cat.lightCones || cat.wEngines || [];
+          list.forEach(name => {
+            catalogItems.push({ id: `cat_${game}_${name}`, name, game, type: 'weapon', stats: '' });
+          });
+        } else if (pickerCurrentType === 'piece') {
+          const list = cat.artifacts || cat.relics || cat.driveDiscs || [];
+          list.forEach(name => {
+            catalogItems.push({ id: `cat_${game}_${name}`, name, game, type: 'piece', stats: '' });
+          });
+        }
+      }
+
+      // 3. Unificar evitando duplicados por nombre
+      const combined = [...itemsFromDb];
+      const existingNames = new Set(itemsFromDb.map(i => (i.name || '').toLowerCase()));
+
+      catalogItems.forEach(cItem => {
+        if (!existingNames.has(cItem.name.toLowerCase())) {
+          combined.push(cItem);
+        }
+      });
+
+      // 4. Filtrar por búsqueda
+      let items = combined;
       if (q) items = items.filter(i => (i.name || '').toLowerCase().includes(q));
-      items = items.slice().sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      items.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
 
       libPickerGrid.innerHTML = '';
 
@@ -3843,7 +3920,7 @@
       uma: { weapons: [], artifacts: [] }
     };
 
-document.addEventListener('DOMContentLoaded', async () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       // 1. Catálogo local estático e inmutable en español (Genshin, ZZZ, UMA)
       const baseCatalog = {
         genshin: {
@@ -3950,6 +4027,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // 4. Inicializar autocompletado en el formulario
       const currentGame = document.getElementById('uGame')?.value || 'genshin';
       updateEquipmentDatalists(currentGame);
+      renderLibrary();
     });
     
     function updateEquipmentDatalists(game) {
