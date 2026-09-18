@@ -3874,7 +3874,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('ℹ️ Usando datos en memoria.');
       }
 
-      // 2. HONKAI: STAR RAIL — Carga Automática por API Estática
+      // 2. HONKAI: STAR RAIL — Carga Automática por API Estática (Español)
       try {
         const [hsrRes, hsrRelicRes] = await Promise.all([
           fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json'),
@@ -3897,11 +3897,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('ℹ️ HSR: Usando catálogo local.');
       }
 
-      // 3. GENSHIN IMPACT — Carga Estática mediante GenshinDB (Español, sin CORS / sin 404)
+      // 3. GENSHIN IMPACT — Carga Estática en Inglés (GenshinDb GitHub)
       try {
         const [gWeaponsRes, gArtifactsRes] = await Promise.all([
-          fetch('https://raw.githubusercontent.com/the-legendary-escorts/genshin-db/main/src/min/spanish/weapons.json'),
-          fetch('https://raw.githubusercontent.com/the-legendary-escorts/genshin-db/main/src/min/spanish/artifacts.json')
+          fetch('https://raw.githubusercontent.com/the-legendary-escorts/genshin-db/main/src/min/english/weapons.json'),
+          fetch('https://raw.githubusercontent.com/the-legendary-escorts/genshin-db/main/src/min/english/artifacts.json')
         ]);
 
         if (gWeaponsRes.ok) {
@@ -3914,7 +3914,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           const gArtifactsData = await gArtifactsRes.json();
           const onlineArtifacts = Object.values(gArtifactsData).map(a => a.name || a).filter(Boolean);
           equipmentCatalog.genshin.artifacts = Array.from(new Set([...equipmentCatalog.genshin.artifacts, ...onlineArtifacts]));
-          console.log('✅ Genshin Impact: Armas y Artefactos sincronizados por API estática.');
+          console.log('✅ Genshin Impact: Armas y Artefactos sincronizados por API (Inglés).');
         }
       } catch (e) {
         console.log('ℹ️ Genshin Impact: Usando catálogo local.');
