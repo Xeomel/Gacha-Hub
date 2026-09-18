@@ -3196,86 +3196,112 @@
 
     let allLibraryViewItems = [];
 
-    function renderLibrary() {
-      const gridEl = document.getElementById('gridLibrary');
-      if (!gridEl) return;
+// 1. Modificación en renderLibrary para listar personajes independientes de la biblioteca
+function renderLibrary() {
+  const gridEl = document.getElementById('gridLibrary');
+  if (!gridEl) return;
 
-      // 1. Obtener elementos guardados en Firebase Firestore
-      let itemsFromDb = libraryData.filter(i => i.type === currentLibType);
+  // Filtrar elementos de Firestore por el tipo actual (weapon, piece, character)
+  let itemsFromDb = libraryData.filter(i => i.type === currentLibType);
 
-      // 2. Extraer los elementos del catálogo dinámico/local (equipmentCatalog)
-      let catalogItems = [];
-      const gameKey = activeGameFilter.library || null;
-      const gamesToProcess = gameKey ? [gameKey] : Object.keys(equipmentCatalog);
+  let catalogItems = [];
+  const gameKey = activeGameFilter.library || null;
+  const gamesToProcess = gameKey ? [gameKey] : Object.keys(equipmentCatalog);
 
-      gamesToProcess.forEach(gKey => {
-        const cat = equipmentCatalog[gKey];
-        if (!cat) return;
+  gamesToProcess.forEach(gKey => {
+    const cat = equipmentCatalog[gKey];
+    if (!cat) return;
 
-        if (currentLibType === 'weapon') {
-          const list = cat.weapons || cat.lightCones || cat.wEngines || [];
-          list.forEach(name => {
-            catalogItems.push({ id: `cat_${gKey}_${name}`, name, game: gKey, type: 'weapon', stats: 'Sincronizado de catálogo base' });
-          });
-        } else if (currentLibType === 'piece') {
-          const list = cat.artifacts || cat.relics || cat.driveDiscs || [];
-          list.forEach(name => {
-            catalogItems.push({ id: `cat_${gKey}_${name}`, name, game: gKey, type: 'piece', stats: 'Sincronizado de catálogo base' });
-          });
-        }
+    if (currentLibType === 'weapon') {
+      const list = cat.weapons || cat.lightCones || cat.wEngines || [];
+      list.forEach(name => {
+        catalogItems.push({ id: `cat_${gKey}_${name}`, name, game: gKey, type: 'weapon', stats: 'Sincronizado de catálogo base' });
       });
-
-      // 3. Unificar ambos orígenes evitando duplicados por nombre
-      const combined = [...itemsFromDb];
-      const existingNames = new Set(itemsFromDb.map(i => (i.name || '').toLowerCase()));
-
-      catalogItems.forEach(cItem => {
-        if (!existingNames.has(cItem.name.toLowerCase())) {
-          combined.push(cItem);
-        }
-      });
-
-      allLibraryViewItems = combined;
-
-      // 4. Aplicar filtro por juego activo
-      let filtered = gameKey ? combined.filter(i => i.game === gameKey) : combined;
-
-      // 5. Aplicar filtro por búsqueda de texto
-      const q = searchQuery.library.trim().toLowerCase();
-      if (q) filtered = filtered.filter(i => (i.name || '').toLowerCase().includes(q));
-
-      // 6. Ordenar alfabéticamente
-      filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-      // 7. Renderizar en la cuadrícula
-      gridEl.innerHTML = '';
-      if (filtered.length === 0) {
-        gridEl.innerHTML = `<div class="empty">${q ? 'No se encontraron elementos con ese nombre.' : 'No hay elementos para mostrar en esta categoría.'}</div>`;
-        return;
-      }
-
-      filtered.forEach(i => {
-        const game = getGameMeta(i.game);
-        const card = document.createElement('article');
-        card.className = 'card';
-        card.style.setProperty('--game-color', game.color);
-        const isFromCatalog = i.id && i.id.startsWith('cat_');
-
-        card.innerHTML = `
-          <div class="card-img" style="${i.image ? `background-image:url(${i.image})` : ''}">${i.image ? '' : 'sin imagen'}</div>
-          <div class="card-body">
-            ${badgeHtml(i.game)}
-            <h3>${escapeHtml(i.name)}</h3>
-            ${i.stats ? `<p class="notes">${escapeHtml(i.stats)}</p>` : ''}
-            <div class="card-actions admin-only" style="display:${isAdmin ? 'flex' : 'none'}">
-              <button class="icon-btn" data-edit-lib="${i.id}">✎ Editar</button>
-              ${!isFromCatalog ? `<button class="icon-btn" data-del-lib="${i.id}">✕ Eliminar</button>` : ''}
-            </div>
-          </div>
-        `;
-        gridEl.appendChild(card);
+    } else if (currentLibType === 'piece') {
+      const list = cat.artifacts || cat.relics || cat.driveDiscs || [];
+      list.forEach(name => {
+        catalogItems.push({ id: `cat_${gKey}_${name}`, name, game: gKey, type: 'piece', stats: 'Sincronizado de catálogo base' });
       });
     }
+  });
+
+  const combined = [...itemsFromDb];
+  const existingNames = new Set(itemsFromDb.map(i => (i.name || '').toLowerCase()));
+
+  catalogItems.forEach(cItem => {
+    if (!existingNames.has(cItem.name.toLowerCase())) {
+      combined.push(cItem);
+    }
+  });
+
+  allLibraryViewItems = combined;
+
+  let filtered = gameKey ? combined.filter(i => i.game === gameKey) : combined;
+
+  const q = searchQuery.library.trim().toLowerCase();
+  if (q) filtered = filtered.filter(i => (i.name || '').toLowerCase().includes(q));
+
+  filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+  gridEl.innerHTML = '';
+  if (filtered.length === 0) {
+    gridEl.innerHTML = `<div class="empty">${q ? 'No se encontraron elementos con ese nombre.' : 'No hay elementos cargados en esta categoría.'}</div>`;
+    return;
+  }
+
+  filtered.forEach(i => {
+    const game = getGameMeta(i.game);
+    const card = document.createElement('article');
+    card.className = 'card';
+    card.style.setProperty('--game-color', game.color);
+    const isFromCatalog = i.id && i.id.startsWith('cat_');
+
+    card.innerHTML = `
+      <div class="card-img" style="${i.image ? `background-image:url(${i.image})` : ''}">${i.image ? '' : 'sin imagen'}</div>
+      <div class="card-body">
+        ${badgeHtml(i.game)}
+        <h3>${escapeHtml(i.name)}</h3>
+        ${i.stats ? `<p class="notes">${escapeHtml(i.stats)}</p>` : ''}
+        <div class="card-actions admin-only" style="display:${isAdmin ? 'flex' : 'none'}">
+          <button class="icon-btn" data-edit-lib="${i.id}">✎ Editar</button>
+          ${!isFromCatalog ? `<button class="icon-btn" data-del-lib="${i.id}">✕ Eliminar</button>` : ''}
+        </div>
+      </div>
+    `;
+    gridEl.appendChild(card);
+  });
+}
+
+// 2. Modificación del evento de edición para permitir cambiar la foto de los personajes
+document.addEventListener('click', (e) => {
+  if (e.target.dataset.editLib) {
+    const id = e.target.dataset.editLib;
+    let i = libraryData.find(x => x.id === id);
+
+    if (!i && id.startsWith('cat_')) {
+      i = allLibraryViewItems.find(x => x.id === id);
+      editingLibId = null;
+    } else {
+      editingLibId = i ? i.id : null;
+    }
+
+    if (!i) return;
+    editingLibType = i.type || currentLibType;
+    document.getElementById('libDialogTitle').textContent = 'Editar ' + (LIB_TYPE_LABELS[editingLibType] || 'elemento');
+    document.getElementById('lGame').value = i.game;
+    document.getElementById('lName').value = i.name;
+    document.getElementById('lStats').value = (i.stats === 'Sincronizado de catálogo base') ? '' : (i.stats || '');
+    lImg.set(i.image || '');
+    
+    // Ocultar campo de estadísticas si es un personaje (solo requiere imagen)
+    const statsField = document.getElementById('lStats').closest('.field');
+    if (statsField) {
+      statsField.style.display = (editingLibType === 'character') ? 'none' : 'block';
+    }
+    
+    libDialog.showModal();
+  }
+});
 
     document.querySelectorAll('.lib-subtab').forEach(btn => {
       btn.addEventListener('click', () => {
