@@ -3196,112 +3196,129 @@
 
     let allLibraryViewItems = [];
 
-// 1. Modificación en renderLibrary para listar personajes independientes de la biblioteca
-function renderLibrary() {
-  const gridEl = document.getElementById('gridLibrary');
-  if (!gridEl) return;
+    // 1. Modificación en renderLibrary para listar personajes independientes de la biblioteca
+    function renderLibrary() {
+      const gridEl = document.getElementById('gridLibrary');
+      if (!gridEl) return;
 
-  // Filtrar elementos de Firestore por el tipo actual (weapon, piece, character)
-  let itemsFromDb = libraryData.filter(i => i.type === currentLibType);
+      // Filtrar elementos de Firestore por el tipo actual (weapon, piece, character)
+      let itemsFromDb = libraryData.filter(i => i.type === currentLibType);
 
-  let catalogItems = [];
-  const gameKey = activeGameFilter.library || null;
-  const gamesToProcess = gameKey ? [gameKey] : Object.keys(equipmentCatalog);
+      let catalogItems = [];
+      const gameKey = activeGameFilter.library || null;
+      const gamesToProcess = gameKey ? [gameKey] : Object.keys(GAMES);
 
-  gamesToProcess.forEach(gKey => {
-    const cat = equipmentCatalog[gKey];
-    if (!cat) return;
+      if (currentLibType === 'character') {
+        // Extraer automáticamente los nombres y fotos de personajes desde las Builds existentes
+        buildsData.forEach(build => {
+          if (build.name && gamesToProcess.includes(build.game)) {
+            catalogItems.push({
+              id: `char_build_${build.id}`,
+              name: build.name,
+              game: build.game,
+              type: 'character',
+              image: build.portrait || '',
+              stats: ''
+            });
+          }
+        });
+      } else {
+        // Catálogo base para armas y piezas
+        gamesToProcess.forEach(gKey => {
+          const cat = equipmentCatalog[gKey];
+          if (!cat) return;
 
-    if (currentLibType === 'weapon') {
-      const list = cat.weapons || cat.lightCones || cat.wEngines || [];
-      list.forEach(name => {
-        catalogItems.push({ id: `cat_${gKey}_${name}`, name, game: gKey, type: 'weapon', stats: 'Sincronizado de catálogo base' });
+          if (currentLibType === 'weapon') {
+            const list = cat.weapons || cat.lightCones || cat.wEngines || [];
+            list.forEach(name => {
+              catalogItems.push({ id: `cat_${gKey}_${name}`, name, game: gKey, type: 'weapon', stats: 'Sincronizado de catálogo base' });
+            });
+          } else if (currentLibType === 'piece') {
+            const list = cat.artifacts || cat.relics || cat.driveDiscs || [];
+            list.forEach(name => {
+              catalogItems.push({ id: `cat_${gKey}_${name}`, name, game: gKey, type: 'piece', stats: 'Sincronizado de catálogo base' });
+            });
+          }
+        });
+      }
+
+      const combined = [...itemsFromDb];
+      const existingNames = new Set(itemsFromDb.map(i => (i.name || '').toLowerCase()));
+
+      catalogItems.forEach(cItem => {
+        if (!existingNames.has(cItem.name.toLowerCase())) {
+          combined.push(cItem);
+        }
       });
-    } else if (currentLibType === 'piece') {
-      const list = cat.artifacts || cat.relics || cat.driveDiscs || [];
-      list.forEach(name => {
-        catalogItems.push({ id: `cat_${gKey}_${name}`, name, game: gKey, type: 'piece', stats: 'Sincronizado de catálogo base' });
+
+      allLibraryViewItems = combined;
+
+      let filtered = gameKey ? combined.filter(i => i.game === gameKey) : combined;
+
+      const q = searchQuery.library.trim().toLowerCase();
+      if (q) filtered = filtered.filter(i => (i.name || '').toLowerCase().includes(q));
+
+      filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+      gridEl.innerHTML = '';
+      if (filtered.length === 0) {
+        gridEl.innerHTML = `<div class="empty">${q ? 'No se encontraron elementos con ese nombre.' : 'No hay elementos cargados en esta categoría.'}</div>`;
+        return;
+      }
+
+      filtered.forEach(i => {
+        const game = getGameMeta(i.game);
+        const card = document.createElement('article');
+        card.className = 'card';
+        card.style.setProperty('--game-color', game.color);
+        const isVirtual = i.id && (i.id.startsWith('cat_') || i.id.startsWith('char_build_'));
+
+        card.innerHTML = `
+          <div class="card-img" style="${i.image ? `background-image:url(${i.image})` : ''}">${i.image ? '' : 'sin imagen'}</div>
+          <div class="card-body">
+            ${badgeHtml(i.game)}
+            <h3>${escapeHtml(i.name)}</h3>
+            ${i.stats ? `<p class="notes">${escapeHtml(i.stats)}</p>` : ''}
+            <div class="card-actions admin-only" style="display:${isAdmin ? 'flex' : 'none'}">
+              <button class="icon-btn" data-edit-lib="${i.id}">✎ Editar</button>
+              ${!isVirtual ? `<button class="icon-btn" data-del-lib="${i.id}">✕ Eliminar</button>` : ''}
+            </div>
+          </div>
+        `;
+        gridEl.appendChild(card);
       });
     }
-  });
 
-  const combined = [...itemsFromDb];
-  const existingNames = new Set(itemsFromDb.map(i => (i.name || '').toLowerCase()));
+    // 2. Modificación del evento de edición para permitir cambiar la foto de los personajes
+    document.addEventListener('click', (e) => {
+      if (e.target.dataset.editLib) {
+        const id = e.target.dataset.editLib;
+        let i = libraryData.find(x => x.id === id);
 
-  catalogItems.forEach(cItem => {
-    if (!existingNames.has(cItem.name.toLowerCase())) {
-      combined.push(cItem);
-    }
-  });
+        if (!i && (id.startsWith('cat_') || id.startsWith('char_build_'))) {
+          i = allLibraryViewItems.find(x => x.id === id);
+          editingLibId = null;
+        } else {
+          editingLibId = i ? i.id : null;
+        }
 
-  allLibraryViewItems = combined;
-
-  let filtered = gameKey ? combined.filter(i => i.game === gameKey) : combined;
-
-  const q = searchQuery.library.trim().toLowerCase();
-  if (q) filtered = filtered.filter(i => (i.name || '').toLowerCase().includes(q));
-
-  filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-  gridEl.innerHTML = '';
-  if (filtered.length === 0) {
-    gridEl.innerHTML = `<div class="empty">${q ? 'No se encontraron elementos con ese nombre.' : 'No hay elementos cargados en esta categoría.'}</div>`;
-    return;
-  }
-
-  filtered.forEach(i => {
-    const game = getGameMeta(i.game);
-    const card = document.createElement('article');
-    card.className = 'card';
-    card.style.setProperty('--game-color', game.color);
-    const isFromCatalog = i.id && i.id.startsWith('cat_');
-
-    card.innerHTML = `
-      <div class="card-img" style="${i.image ? `background-image:url(${i.image})` : ''}">${i.image ? '' : 'sin imagen'}</div>
-      <div class="card-body">
-        ${badgeHtml(i.game)}
-        <h3>${escapeHtml(i.name)}</h3>
-        ${i.stats ? `<p class="notes">${escapeHtml(i.stats)}</p>` : ''}
-        <div class="card-actions admin-only" style="display:${isAdmin ? 'flex' : 'none'}">
-          <button class="icon-btn" data-edit-lib="${i.id}">✎ Editar</button>
-          ${!isFromCatalog ? `<button class="icon-btn" data-del-lib="${i.id}">✕ Eliminar</button>` : ''}
-        </div>
-      </div>
-    `;
-    gridEl.appendChild(card);
-  });
-}
-
-// 2. Modificación del evento de edición para permitir cambiar la foto de los personajes
-document.addEventListener('click', (e) => {
-  if (e.target.dataset.editLib) {
-    const id = e.target.dataset.editLib;
-    let i = libraryData.find(x => x.id === id);
-
-    if (!i && id.startsWith('cat_')) {
-      i = allLibraryViewItems.find(x => x.id === id);
-      editingLibId = null;
-    } else {
-      editingLibId = i ? i.id : null;
-    }
-
-    if (!i) return;
-    editingLibType = i.type || currentLibType;
-    document.getElementById('libDialogTitle').textContent = 'Editar ' + (LIB_TYPE_LABELS[editingLibType] || 'elemento');
-    document.getElementById('lGame').value = i.game;
-    document.getElementById('lName').value = i.name;
-    document.getElementById('lStats').value = (i.stats === 'Sincronizado de catálogo base') ? '' : (i.stats || '');
-    lImg.set(i.image || '');
-    
-    // Ocultar campo de estadísticas si es un personaje (solo requiere imagen)
-    const statsField = document.getElementById('lStats').closest('.field');
-    if (statsField) {
-      statsField.style.display = (editingLibType === 'character') ? 'none' : 'block';
-    }
-    
-    libDialog.showModal();
-  }
-});
+        if (!i) return;
+        editingLibType = i.type || currentLibType;
+        document.getElementById('libDialogTitle').textContent = 'Editar ' + (LIB_TYPE_LABELS[editingLibType] || 'elemento');
+        document.getElementById('lGame').value = i.game;
+        document.getElementById('lName').value = i.name;
+        document.getElementById('lStats').value = (i.stats === 'Sincronizado de catálogo base') ? '' : (i.stats || '');
+        lImg.set(i.image || '');
+        
+        // Ocultar campo de estadísticas si es un personaje (solo requiere imagen)
+        const statsField = document.getElementById('lStats').closest('.field');
+        if (statsField) {
+          statsField.style.display = (editingLibType === 'character') ? 'none' : 'block';
+        }
+        
+        libDialog.showModal();
+      }
+    });
 
     document.querySelectorAll('.lib-subtab').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -3348,6 +3365,7 @@ document.addEventListener('click', (e) => {
     db.collection('builds').onSnapshot(snap => {
       buildsData = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderBuilds();
+      renderLibrary();
       if (sharedBuildId && !sharedBuildAutoOpened) {
         const shared = buildsData.find(u => u.id === sharedBuildId);
         if (shared) {
@@ -3857,18 +3875,35 @@ document.addEventListener('click', (e) => {
 
       // 2. Extraer elementos del catálogo dinámico/local
       let catalogItems = [];
-      const cat = equipmentCatalog[game];
-      if (cat) {
-        if (pickerCurrentType === 'weapon') {
-          const list = cat.weapons || cat.lightCones || cat.wEngines || [];
-          list.forEach(name => {
-            catalogItems.push({ id: `cat_${game}_${name}`, name, game, type: 'weapon', stats: '' });
-          });
-        } else if (pickerCurrentType === 'piece') {
-          const list = cat.artifacts || cat.relics || cat.driveDiscs || [];
-          list.forEach(name => {
-            catalogItems.push({ id: `cat_${game}_${name}`, name, game, type: 'piece', stats: '' });
-          });
+
+      if (pickerCurrentType === 'character') {
+        // En el picker de equipos, listar también los personajes creados en Builds
+        buildsData.filter(b => b.game === game).forEach(build => {
+          if (build.name) {
+            catalogItems.push({
+              id: `char_build_${build.id}`,
+              name: build.name,
+              game: build.game,
+              type: 'character',
+              image: build.portrait || '',
+              stats: ''
+            });
+          }
+        });
+      } else {
+        const cat = equipmentCatalog[game];
+        if (cat) {
+          if (pickerCurrentType === 'weapon') {
+            const list = cat.weapons || cat.lightCones || cat.wEngines || [];
+            list.forEach(name => {
+              catalogItems.push({ id: `cat_${game}_${name}`, name, game, type: 'weapon', stats: '' });
+            });
+          } else if (pickerCurrentType === 'piece') {
+            const list = cat.artifacts || cat.relics || cat.driveDiscs || [];
+            list.forEach(name => {
+              catalogItems.push({ id: `cat_${game}_${name}`, name, game, type: 'piece', stats: '' });
+            });
+          }
         }
       }
 
@@ -4059,7 +4094,7 @@ document.addEventListener('click', (e) => {
       updateEquipmentDatalists(currentGame);
       renderLibrary();
     });
-    
+
     function updateEquipmentDatalists(game) {
       const weaponsDatalist = document.getElementById('weaponsOptions');
       const piecesDatalist = document.getElementById('piecesOptions');
@@ -4624,6 +4659,12 @@ document.addEventListener('click', (e) => {
       document.getElementById('lName').value = '';
       document.getElementById('lStats').value = '';
       lImg.reset();
+      
+      const statsField = document.getElementById('lStats').closest('.field');
+      if (statsField) {
+        statsField.style.display = (editingLibType === 'character') ? 'none' : 'block';
+      }
+      
       libDialog.showModal();
     }));
     document.getElementById('libCancel').addEventListener('click', () => libDialog.close());
@@ -4647,27 +4688,6 @@ document.addEventListener('click', (e) => {
     });
 
     document.addEventListener('click', (e) => {
-      if (e.target.dataset.editLib) {
-        const id = e.target.dataset.editLib;
-        let i = libraryData.find(x => x.id === id);
-
-        // Si es un elemento virtual del catálogo base, se busca en la vista combinada
-        if (!i && id.startsWith('cat_')) {
-          i = allLibraryViewItems.find(x => x.id === id);
-          editingLibId = null; // Al guardarse creará un documento real en Firebase
-        } else {
-          editingLibId = i ? i.id : null;
-        }
-
-        if (!i) return;
-        editingLibType = i.type || currentLibType;
-        document.getElementById('libDialogTitle').textContent = 'Editar ' + LIB_TYPE_LABELS[editingLibType];
-        document.getElementById('lGame').value = i.game;
-        document.getElementById('lName').value = i.name;
-        document.getElementById('lStats').value = (i.stats === 'Sincronizado de catálogo base') ? '' : (i.stats || '');
-        lImg.set(i.image || '');
-        libDialog.showModal();
-      }
       if (e.target.dataset.delLib) {
         if (confirm('¿Eliminar este elemento de la biblioteca?')) {
           db.collection('library').doc(e.target.dataset.delLib).delete();
