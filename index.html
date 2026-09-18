@@ -3844,120 +3844,113 @@
     };
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Estructura base limpia
-  equipmentCatalog = {
-    genshin: { weapons: [], artifacts: [] },
-    hsr: { lightCones: [], relics: [], planarOrnaments: [] },
-    zzz: { wEngines: [], driveDiscs: [] },
-    uma: { weapons: [], artifacts: [] }
-  };
+      // 1. Catálogo local estático e inmutable en español (Genshin, ZZZ, UMA)
+      const baseCatalog = {
+        genshin: {
+          weapons: [
+            "Aquelarre Nocturno", "Aquelarre del Cazador", "Arco de Amos", "Arco de la Cazadora Real", 
+            "Arco del Sacrificio", "Arco de Favonius", "Ala Celestial", "Cortador de la Montaña", 
+            "Cortador de Jade Primordial", "Elegía del Fin", "Espada de Favonius", "Espada del Sacrificio", 
+            "Espada de la Desidia", "Espada Real", "Espada Negra", "Espada Celestial", "Lanza de Favonius", 
+            "Lanza del Duelo", "Lanza Real", "Halcon de Jade", "Lanza Celestial", "Gran Espada de Favonius", 
+            "Gran Espada del Sacrificio", "Gran Espada Real", "Marea Negra", "Orgullo Celestial", 
+            "Luz del Segador", "Aplastarrocas Redentor", "Acuamaria de Mahaira", "Estrella Polar", 
+            "Agua de las Profundidades", "Sombra de la Marea", "Espada del Alba", "Sinfonía de los Merodeadores", 
+            "Memorias del Sacrificio", "Ojo de la Perspicacia", "Oración a los Vientos Sagrados", 
+            "Pergamino Celestial", "Aptitud Real", "Luz de la Cortada de las Hojas", "Báculo de Homa", 
+            "Báculo de las Arenas Escarlatas", "Cazador de la Oscuridad", "Lira Celestial"
+          ],
+          artifacts: [
+            "Llama Albina", "Tenacidad de la Geoarmada", "Set del Glaciador", "Corazón de las Profundidades", 
+            "Sombra Verde Esmeralda", "Doncella Amada", "Furia del Trueno", "Domador de Truenos", 
+            "Bruja Carmesí de las Llamas", "Lavawalker", "Ritual Antiguo de la Nobleza", "Escudo del Rey", 
+            "Nómada del Invierno", "Perla Oceánica", "Cáscara de Sueños Opulentos", "Final del Gladiador", 
+            "Orquesta del Vagabundo", "Recuerdos del Bosque", "Sueños Áureos", "Flor Olvidada del Paraíso", 
+            "Pabellón del Desierto", "Cazador de la Sombra", "Compañía Dorada", "Eco del Sacrificio"
+          ]
+        },
+        zzz: {
+          wEngines: [
+            "Motor Abisal", "Cámara Estelar", "Sinfonía del Vacío", "Burbuja de Vapor", 
+            "Corazón de Electro", "Motor Cinetico Tipo 3", "Núcleo Vulcano", "Cañón de Choque", 
+            "Generador Aethel", "Motor de Fisura", "Compresor Físico", "Inyector de Ether", 
+            "Giroscopio Pesado", "Sombra Urban", "Furia de Acero", "Motor de Impulso S", 
+            "Calibrador Fértil", "Motor de Fase A", "Disipador de Impacto"
+          ],
+          driveDiscs: [
+            "Metal Furioso", "Tecno Electro", "Jazz Caótico", "Puntería de Éter", 
+            "Heavy Metal Físico", "Ácido Ártico", "Motor Integrado", "Pico de Fuego", 
+            "Disco Urbano 01", "Disco de Impacto", "Procesador Anémico", "Núcleo de Asalto"
+          ]
+        },
+        uma: { weapons: [], artifacts: [] }
+      };
 
-  // 1. Cargar JSON local solo como soporte secundario si existe
-  try {
-    const res = await fetch('./data/equipment-database.json');
-    if (res.ok) {
-      const localData = await res.json();
-      if (localData.genshin) {
-        equipmentCatalog.genshin.weapons.push(...(localData.genshin.weapons || []));
-        equipmentCatalog.genshin.artifacts.push(...(localData.genshin.artifacts || []));
-      }
-      if (localData.zzz) {
-        equipmentCatalog.zzz.wEngines.push(...(localData.zzz.wEngines || []));
-        equipmentCatalog.zzz.driveDiscs.push(...(localData.zzz.driveDiscs || []));
-      }
-    }
-  } catch (e) {
-    // Silencioso
-  }
+      // Asignación inicial garantizada
+      equipmentCatalog = {
+        genshin: { weapons: [...baseCatalog.genshin.weapons], artifacts: [...baseCatalog.genshin.artifacts] },
+        hsr: { lightCones: [], relics: [], planarOrnaments: [] },
+        zzz: { wEngines: [...baseCatalog.zzz.wEngines], driveDiscs: [...baseCatalog.zzz.driveDiscs] },
+        uma: { weapons: [], artifacts: [] }
+      };
 
-  // 2. GENSHIN IMPACT — Sincronización vía CDN Estático unificado (Español / Nombres traducidos)
-  try {
-    const [gWeaponsRes, gArtRes] = await Promise.all([
-      fetch('https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store/loc.json'),
-      fetch('https://raw.githubusercontent.com/EnkaNetwork/API-docs/master/store/genshin/honkai_equipment.json').catch(() => null)
-    ]);
-
-    if (gWeaponsRes.ok) {
-      const locData = await gWeaponsRes.json();
-      const esDict = locData.es || locData.en || {};
-      
-      // Mapeo automático de nombres desde el diccionario estático
-      const weaponsList = [];
-      const artifactsList = [];
-
-      Object.keys(esDict).forEach(key => {
-        const val = esDict[key];
-        if (typeof val === 'string' && val.length > 2) {
-          // Filtrado básico de entradas de equipamiento
-          if (key.startsWith('UI_EquipAffix') || key.startsWith('EQUIP_WEAPON')) {
-            weaponsList.push(val);
-          } else if (key.startsWith('EQUIP_RELIC') || key.startsWith('ART_')) {
-            artifactsList.push(val);
+      // 2. Intento de fusión con ./data/equipment-database.json si existe en tu proyecto
+      try {
+        const res = await fetch('./data/equipment-database.json');
+        if (res.ok) {
+          const localData = await res.json();
+          if (localData.genshin) {
+            if (localData.genshin.weapons) equipmentCatalog.genshin.weapons.push(...localData.genshin.weapons);
+            if (localData.genshin.artifacts) equipmentCatalog.genshin.artifacts.push(...localData.genshin.artifacts);
+          }
+          if (localData.zzz) {
+            if (localData.zzz.wEngines) equipmentCatalog.zzz.wEngines.push(...localData.zzz.wEngines);
+            if (localData.zzz.driveDiscs) equipmentCatalog.zzz.driveDiscs.push(...localData.zzz.driveDiscs);
           }
         }
-      });
+      } catch (e) {
+        // Silencioso
+      }
 
-      if (weaponsList.length) equipmentCatalog.genshin.weapons = Array.from(new Set([...equipmentCatalog.genshin.weapons, ...weaponsList]));
-      if (artifactsList.length) equipmentCatalog.genshin.artifacts = Array.from(new Set([...equipmentCatalog.genshin.artifacts, ...artifactsList]));
-      
-      console.log(`✅ Genshin Impact: ${equipmentCatalog.genshin.weapons.length} armas y ${equipmentCatalog.genshin.artifacts.length} artefactos cargados.`);
-    }
-  } catch (err) {
-    console.log('ℹ️ Genshin Impact: Usando respaldo local.');
-  }
+      // 3. HONKAI: STAR RAIL — API Estática Única Funcional (Carga automática)
+      try {
+        const [hsrRes, hsrRelicRes] = await Promise.all([
+          fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json'),
+          fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/relics.json')
+        ]);
 
-  // 3. HONKAI: STAR RAIL — API Estática (Confirmada funcional en tu consola)
-  try {
-    const [hsrRes, hsrRelicRes] = await Promise.all([
-      fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/light_cones.json'),
-      fetch('https://vizualabstract.github.io/StarRailStaticAPI/db/es/relics.json')
-    ]);
-
-    if (hsrRes.ok) {
-      const hsrConesObj = await hsrRes.json();
-      const onlineCones = Object.values(hsrConesObj).map(c => c.name).filter(Boolean);
-      equipmentCatalog.hsr.lightCones = Array.from(new Set([...equipmentCatalog.hsr.lightCones, ...onlineCones]));
-    }
-
-    if (hsrRelicRes.ok) {
-      const hsrRelicsObj = await hsrRelicRes.json();
-      const onlineRelics = Object.values(hsrRelicsObj).map(r => r.name).filter(Boolean);
-      equipmentCatalog.hsr.relics = Array.from(new Set([...equipmentCatalog.hsr.relics, ...onlineRelics]));
-      console.log(`✅ HSR: ${equipmentCatalog.hsr.lightCones.length} conos y ${equipmentCatalog.hsr.relics.length} reliquias cargadas.`);
-    }
-  } catch (e) {
-    console.log('ℹ️ HSR: Usando respaldo local.');
-  }
-
-  // 4. ZENLESS ZONE ZERO — Indexación dinámica por API pública
-  try {
-    const zzzRes = await fetch('https://raw.githubusercontent.com/Dimbreath/ZenlessData/master/TextMap/TextMapHandledES.json');
-    if (zzzRes.ok) {
-      const textMap = await zzzRes.json();
-      const engines = [];
-      const discs = [];
-
-      Object.keys(textMap).forEach(k => {
-        const text = textMap[k];
-        if (typeof text === 'string') {
-          if (k.includes('Item_WEngine_') || k.includes('Weapon_Name_')) engines.push(text);
-          if (k.includes('Item_Disc_') || k.includes('Equipment_Name_')) discs.push(text);
+        if (hsrRes.ok) {
+          const hsrConesObj = await hsrRes.json();
+          const onlineCones = Object.values(hsrConesObj).map(c => c.name).filter(Boolean);
+          equipmentCatalog.hsr.lightCones = onlineCones;
         }
+
+        if (hsrRelicRes.ok) {
+          const hsrRelicsObj = await hsrRelicRes.json();
+          const onlineRelics = Object.values(hsrRelicsObj).map(r => r.name).filter(Boolean);
+          equipmentCatalog.hsr.relics = onlineRelics;
+          console.log(`✅ HSR: ${equipmentCatalog.hsr.lightCones.length} conos y ${equipmentCatalog.hsr.relics.length} reliquias cargadas por API.`);
+        }
+      } catch (e) {
+        console.log('ℹ️ HSR: Error al conectar con API.');
+      }
+
+      // Limpieza de duplicados final en todas las listas
+      Object.keys(equipmentCatalog).forEach(game => {
+        Object.keys(equipmentCatalog[game]).forEach(prop => {
+          if (Array.isArray(equipmentCatalog[game][prop])) {
+            equipmentCatalog[game][prop] = Array.from(new Set(equipmentCatalog[game][prop]));
+          }
+        });
       });
 
-      if (engines.length) equipmentCatalog.zzz.wEngines = Array.from(new Set([...equipmentCatalog.zzz.wEngines, ...engines]));
-      if (discs.length) equipmentCatalog.zzz.driveDiscs = Array.from(new Set([...equipmentCatalog.zzz.driveDiscs, ...discs]));
-      
-      console.log(`✅ ZZZ: ${equipmentCatalog.zzz.wEngines.length} motores y ${equipmentCatalog.zzz.driveDiscs.length} discos cargados.`);
-    }
-  } catch (e) {
-    console.log('ℹ️ ZZZ: Usando respaldo local.');
-  }
+      console.log(`✅ Genshin Impact: ${equipmentCatalog.genshin.weapons.length} armas y ${equipmentCatalog.genshin.artifacts.length} artefactos listos.`);
+      console.log(`✅ ZZZ: ${equipmentCatalog.zzz.wEngines.length} motores y ${equipmentCatalog.zzz.driveDiscs.length} discos listos.`);
 
-  // 5. Vincular al autocompletado UI
-  const currentGame = document.getElementById('uGame')?.value || 'genshin';
-  updateEquipmentDatalists(currentGame);
-});
+      // 4. Inicializar autocompletado en el formulario
+      const currentGame = document.getElementById('uGame')?.value || 'genshin';
+      updateEquipmentDatalists(currentGame);
+    });
     
     function updateEquipmentDatalists(game) {
       const weaponsDatalist = document.getElementById('weaponsOptions');
