@@ -3194,6 +3194,8 @@
       buildDetailDialog.showModal();
     }
 
+    let allLibraryViewItems = [];
+
     function renderLibrary() {
       const gridEl = document.getElementById('gridLibrary');
       if (!gridEl) return;
@@ -3233,6 +3235,8 @@
         }
       });
 
+      allLibraryViewItems = combined;
+
       // 4. Aplicar filtro por juego activo
       let filtered = gameKey ? combined.filter(i => i.game === gameKey) : combined;
 
@@ -3263,9 +3267,9 @@
             ${badgeHtml(i.game)}
             <h3>${escapeHtml(i.name)}</h3>
             ${i.stats ? `<p class="notes">${escapeHtml(i.stats)}</p>` : ''}
-            <div class="card-actions admin-only" style="display:${isAdmin && !isFromCatalog ? 'flex' : 'none'}">
+            <div class="card-actions admin-only" style="display:${isAdmin ? 'flex' : 'none'}">
               <button class="icon-btn" data-edit-lib="${i.id}">✎ Editar</button>
-              <button class="icon-btn" data-del-lib="${i.id}">✕ Eliminar</button>
+              ${!isFromCatalog ? `<button class="icon-btn" data-del-lib="${i.id}">✕ Eliminar</button>` : ''}
             </div>
           </div>
         `;
@@ -4618,15 +4622,24 @@
 
     document.addEventListener('click', (e) => {
       if (e.target.dataset.editLib) {
-        const i = libraryData.find(x => x.id === e.target.dataset.editLib);
+        const id = e.target.dataset.editLib;
+        let i = libraryData.find(x => x.id === id);
+
+        // Si es un elemento virtual del catálogo base, se busca en la vista combinada
+        if (!i && id.startsWith('cat_')) {
+          i = allLibraryViewItems.find(x => x.id === id);
+          editingLibId = null; // Al guardarse creará un documento real en Firebase
+        } else {
+          editingLibId = i ? i.id : null;
+        }
+
         if (!i) return;
-        editingLibId = i.id;
-        editingLibType = i.type;
+        editingLibType = i.type || currentLibType;
         document.getElementById('libDialogTitle').textContent = 'Editar ' + LIB_TYPE_LABELS[editingLibType];
         document.getElementById('lGame').value = i.game;
         document.getElementById('lName').value = i.name;
-        document.getElementById('lStats').value = i.stats || '';
-        lImg.set(i.image);
+        document.getElementById('lStats').value = (i.stats === 'Sincronizado de catálogo base') ? '' : (i.stats || '');
+        lImg.set(i.image || '');
         libDialog.showModal();
       }
       if (e.target.dataset.delLib) {
