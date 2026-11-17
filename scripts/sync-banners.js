@@ -66,38 +66,40 @@ async function fetchGenshinBanners() {
 
   let currentStart = null;
   let currentEnd = null;
-  const dateRangeRegex = /([A-Za-z]+ \d{1,2}, \d{4})\s*-\s*([A-Za-z]+ \d{1,2}, \d{4})/i;
+  const dateRangeRegex = /([A-Za-z]+ \d{1,2}, \d{4})\s*-\s*([A-Za-z]+ \d{1,2}, \d{4}|TBA)/i;
 
   for (const row of rows) {
     const dateMatch = row.match(dateRangeRegex);
     if (dateMatch) {
       currentStart = parseDateStr(dateMatch[1]);
-      currentEnd = parseDateStr(dateMatch[2]);
+      if (dateMatch[2].toUpperCase() === 'TBA') {
+        currentEnd = currentStart + (21 * 24 * 3600 * 1000);
+      } else {
+        currentEnd = parseDateStr(dateMatch[2]);
+      }
     }
 
     if (/Character\s*(?:<[^>]+>\s*)*Event/i.test(row) && currentStart && currentEnd) {
-      const bannerBlocks = row.match(/<div>\s*<span typeof="mw:File">[\s\S]*?<\/div>/gi) || [row];
-      for (const bBlock of bannerBlocks) {
-        const linkMatch = bBlock.match(/<a[^>]+title="([^"/]+)(?:\/\d{4}-\d{2}-\d{2})?"[^>]*>([^<]+)<\/a>/i);
-        const name = linkMatch ? linkMatch[2].trim() : '';
+      const linkMatches = [...row.matchAll(/<a[^>]+title="([^"/]+)(?:\/\d{4}-\d{2}-\d{2})?"[^>]*>([^<]+)<\/a>/gi)];
+      for (const lm of linkMatches) {
+        const name = lm[2].trim();
+        if (!name || /Character Event|Special:Upload|File:/i.test(name)) continue;
 
-        const dataSrcMatch = bBlock.match(/data-src="([^"]+)"/i);
-        const srcMatch = bBlock.match(/src="([^"]+)"/i);
+        const dataSrcMatch = row.match(/data-src="([^"]+)"/i);
+        const srcMatch = row.match(/src="([^"]+)"/i);
         let img = dataSrcMatch ? dataSrcMatch[1] : (srcMatch ? srcMatch[1] : '');
         if (img.startsWith('//')) img = 'https:' + img;
         if (img.includes('data:image') || img.includes('placeholder')) img = '';
         if (img) img = img.replace(/\/scale-to-width-down\/\d+/, '/scale-to-width-down/600');
 
-        if (name && name !== 'Character Event Wish') {
-          banners.push({
-            game: 'genshin',
-            name,
-            start: currentStart,
-            end: currentEnd + (23 * 3600 + 59 * 60) * 1000,
-            image: img,
-            notes: 'Character Event Wish (Genshin Impact)'
-          });
-        }
+        banners.push({
+          game: 'genshin',
+          name,
+          start: currentStart,
+          end: currentEnd + (23 * 3600 + 59 * 60) * 1000,
+          image: img,
+          notes: 'Character Event Wish (Genshin Impact)'
+        });
       }
     }
   }
@@ -115,38 +117,40 @@ async function fetchHSRBanners() {
 
   let currentStart = null;
   let currentEnd = null;
-  const dateRangeRegex = /([A-Za-z]+ \d{1,2}, \d{4})\s*-\s*([A-Za-z]+ \d{1,2}, \d{4})/i;
+  const dateRangeRegex = /([A-Za-z]+ \d{1,2}, \d{4})\s*-\s*([A-Za-z]+ \d{1,2}, \d{4}|TBA)/i;
 
   for (const row of rows) {
     const dateMatch = row.match(dateRangeRegex);
     if (dateMatch) {
       currentStart = parseDateStr(dateMatch[1]);
-      currentEnd = parseDateStr(dateMatch[2]);
+      if (dateMatch[2].toUpperCase() === 'TBA') {
+        currentEnd = currentStart + (21 * 24 * 3600 * 1000);
+      } else {
+        currentEnd = parseDateStr(dateMatch[2]);
+      }
     }
 
     if (/Character\s*(?:<[^>]+>\s*)*Event/i.test(row) && currentStart && currentEnd) {
-      const bannerBlocks = row.match(/<div>\s*<span typeof="mw:File">[\s\S]*?<\/div>/gi) || [row];
-      for (const bBlock of bannerBlocks) {
-        const linkMatch = bBlock.match(/<a[^>]+title="([^"/]+)(?:\/\d{4}-\d{2}-\d{2})?"[^>]*>([^<]+)<\/a>/i);
-        const name = linkMatch ? linkMatch[2].trim() : '';
+      const linkMatches = [...row.matchAll(/<a[^>]+title="([^"/]+)(?:\/\d{4}-\d{2}-\d{2})?"[^>]*>([^<]+)<\/a>/gi)];
+      for (const lm of linkMatches) {
+        const name = lm[2].trim();
+        if (!name || /Character Event|Special:Upload|File:/i.test(name)) continue;
 
-        const dataSrcMatch = bBlock.match(/data-src="([^"]+)"/i);
-        const srcMatch = bBlock.match(/src="([^"]+)"/i);
+        const dataSrcMatch = row.match(/data-src="([^"]+)"/i);
+        const srcMatch = row.match(/src="([^"]+)"/i);
         let img = dataSrcMatch ? dataSrcMatch[1] : (srcMatch ? srcMatch[1] : '');
         if (img.startsWith('//')) img = 'https:' + img;
         if (img.includes('data:image') || img.includes('placeholder')) img = '';
         if (img) img = img.replace(/\/scale-to-width-down\/\d+/, '/scale-to-width-down/600');
 
-        if (name && name !== 'Character Event Warp') {
-          banners.push({
-            game: 'hsr',
-            name,
-            start: currentStart,
-            end: currentEnd + (23 * 3600 + 59 * 60) * 1000,
-            image: img,
-            notes: 'Character Event Warp (Honkai: Star Rail)'
-          });
-        }
+        banners.push({
+          game: 'hsr',
+          name,
+          start: currentStart,
+          end: currentEnd + (23 * 3600 + 59 * 60) * 1000,
+          image: img,
+          notes: 'Character Event Warp (Honkai: Star Rail)'
+        });
       }
     }
   }
@@ -275,7 +279,7 @@ async function main() {
     console.error('Error fatal al obtener fuentes:', err);
   }
 
-  // Deduplicación por nombre + juego
+  // Deduplicación por nombre + juego + inicio
   const uniqueMap = new Map();
   for (const b of allBanners) {
     const key = `${b.game}_${b.name.toLowerCase()}_${toYMD(b.start)}`;
