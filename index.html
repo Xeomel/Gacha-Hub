@@ -2832,8 +2832,23 @@
       bannerSlideIntervals.forEach(id => clearInterval(id));
       bannerSlideIntervals = [];
       const now = Date.now();
-      const activeList = bannersData.filter(b => b.end >= now && b.start <= now).sort((a, b) => a.end - b.end);
-      const upcomingList = bannersData.filter(b => b.start > now).sort((a, b) => a.start - b.start);
+      const toTs = val => {
+        if (!val) return 0;
+        if (typeof val === 'number') return val;
+        const d = new Date(val);
+        return isNaN(d.getTime()) ? 0 : d.getTime();
+      };
+
+      const activeList = bannersData.filter(b => {
+        const s = toTs(b.start);
+        const e = toTs(b.end);
+        return s > 0 && e >= now && s <= now;
+      }).sort((a, b) => toTs(a.end) - toTs(b.end));
+
+      const upcomingList = bannersData.filter(b => {
+        const s = toTs(b.start);
+        return s > now;
+      }).sort((a, b) => toTs(a.start) - toTs(b.start));
 
       renderBannerGrid('gridActive', 'filtersActive', activeList, 'active');
       renderBannerGrid('gridUpcoming', 'filtersUpcoming', upcomingList, 'upcoming');
@@ -3605,7 +3620,7 @@
         const cleanedHtml = (html || '').replace(/&#44;/g, ',').replace(/&#8212;/g, '-').replace(/&amp;/g, '&');
         const doc = new DOMParser().parseFromString(cleanedHtml, 'text/html');
         const results = [];
-        const dateRangeRegex = /([A-Za-z]+ \d{1,2}, \d{4})\s*[\u2013\u2014\-]\s*([A-Za-z]+ \d{1,2}, \d{4})/i;
+        const dateRangeRegex = /([A-Za-z]+ \d{1,2}, \d{4})\s*[\u2013\u2014\-]\s*([A-Za-z]+ \d{1,2}, \d{4}|TBA)/i;
         const rows = doc.querySelectorAll('tr');
 
         if (gameKey === 'zzz') {
@@ -3649,31 +3664,30 @@
             const dateMatch = text.match(dateRangeRegex);
             if (dateMatch) {
               currentStart = this._normalizeDate(dateMatch[1]);
-              currentEnd = this._normalizeDate(dateMatch[2]);
+              currentEnd = dateMatch[2].toUpperCase() === 'TBA'
+                ? this._addDays(currentStart, 21)
+                : this._normalizeDate(dateMatch[2]);
             }
 
             if (/Character\s*(?:Event|Warp|Wish)/i.test(text) && currentStart && currentEnd) {
-              const bannerDivs = row.querySelectorAll('.wish-banners > div, .warp-banners > div');
-              const items = bannerDivs.length > 0 ? [...bannerDivs] : [row];
+              const linkMatches = [...row.querySelectorAll('a[title]')];
+              linkMatches.forEach(link => {
+                const name = link.textContent.trim();
+                if (!name || /Character Event|Special:Upload|File:/i.test(name)) return;
 
-              items.forEach(item => {
-                const link = item.querySelector('a[title]');
-                const name = link ? link.textContent.trim() : '';
-                const img = item.querySelector('img');
+                const img = row.querySelector('img');
                 let imageUrl = img ? (img.getAttribute('data-src') || img.getAttribute('src') || '') : '';
                 if (imageUrl.startsWith('//')) imageUrl = 'https:' + imageUrl;
                 if (imageUrl.includes('data:image')) imageUrl = '';
                 if (imageUrl) imageUrl = imageUrl.replace(/\/scale-to-width-down\/\d+/, '/scale-to-width-down/600');
 
-                if (name && !name.includes('Character Event')) {
-                  results.push({
-                    name,
-                    start: currentStart,
-                    end: currentEnd,
-                    image: imageUrl && imageUrl.startsWith('http') ? imageUrl : '',
-                    notes: gameKey === 'genshin' ? 'Character Event Wish (Genshin Impact)' : 'Character Event Warp (Honkai: Star Rail)'
-                  });
-                }
+                results.push({
+                  name,
+                  start: currentStart,
+                  end: currentEnd,
+                  image: imageUrl && imageUrl.startsWith('http') ? imageUrl : '',
+                  notes: gameKey === 'genshin' ? 'Character Event Wish (Genshin Impact)' : 'Character Event Warp (Honkai: Star Rail)'
+                });
               });
             }
           });
@@ -3697,6 +3711,15 @@
         raw = raw.replace(/[\u2013\u2014]/g, '-').replace(/&#8212;/g, '-').replace(/&#44;/g, ',').trim();
         const d = new Date(raw);
         if (isNaN(d.getTime())) return '';
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      },
+
+      _addDays(dateStr, days) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr + 'T00:00:00');
+        if (isNaN(d.getTime())) return '';
+        d.setDate(d.getDate() + days);
         const pad = n => String(n).padStart(2, '0');
         return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
       }
