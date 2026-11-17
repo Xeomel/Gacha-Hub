@@ -2,8 +2,8 @@
 
 /**
  * Gacha Hub — Sincronizador Autónomo de Banners
- * Consulta las wikis de Fandom de Genshin Impact, Honkai: Star Rail,
- * Zenless Zone Zero y Umamusume para obtener banners activos y próximos,
+ * Consulta las wikis de Fandom de Genshin Impact, Honkai: Star Rail
+ * y Zenless Zone Zero para obtener banners activos y próximos,
  * y los sincroniza automáticamente en Google Cloud Firestore.
  *
  * Uso:
@@ -11,16 +11,20 @@
  *   node scripts/sync-banners.js --dry-run  (Modo simulación, solo imprime en consola)
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import admin from 'firebase-admin';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const isDryRun = process.argv.includes('--dry-run');
 
 const GAME_META = {
   genshin: { label: 'Genshin Impact', color: '#f2c14e' },
   hsr: { label: 'Honkai: Star Rail', color: '#b98cea' },
-  zzz: { label: 'Zenless Zone Zero', color: '#6fa9e6' },
-  uma: { label: 'Umamusume', color: '#f28fc0' }
+  zzz: { label: 'Zenless Zone Zero', color: '#6fa9e6' }
 };
 
 function cleanText(str) {
@@ -36,11 +40,7 @@ function cleanText(str) {
 
 function parseDateStr(raw) {
   if (!raw) return null;
-  raw = raw
-    .replace(/[\u2013\u2014]/g, '-')
-    .replace(/&#8212;/g, '-')
-    .replace(/&#44;/g, ',')
-    .trim();
+  raw = cleanText(raw);
   const d = new Date(raw);
   if (isNaN(d.getTime())) return null;
   return d.getTime();
@@ -59,44 +59,45 @@ async function fetchGenshinBanners() {
   console.log('🔍 Obteniendo banners de Genshin Impact...');
   const res = await fetch('https://genshin-impact.fandom.com/api.php?action=parse&page=Wish/List&prop=text&format=json');
   const json = await res.json();
-  const html = json.parse?.text?.['*'] || '';
+  const rawHtml = json.parse?.text?.['*'] || '';
+  const html = rawHtml.replace(/&#44;/g, ',').replace(/&#8212;/g, '-').replace(/&amp;/g, '&');
   const banners = [];
-  const rows = html.match(/<tr[\s\S]*?<\/tr>/gi) || [];
+  const rows = html.split(/<tr[^>]*>/i);
 
   let currentStart = null;
   let currentEnd = null;
   const dateRangeRegex = /([A-Za-z]+ \d{1,2}, \d{4})\s*-\s*([A-Za-z]+ \d{1,2}, \d{4})/i;
 
   for (const row of rows) {
-    const text = cleanText(row);
-    const dateMatch = text.match(dateRangeRegex);
+    const dateMatch = row.match(dateRangeRegex);
     if (dateMatch) {
       currentStart = parseDateStr(dateMatch[1]);
       currentEnd = parseDateStr(dateMatch[2]);
     }
 
-    if (row.includes('Character Event') && currentStart && currentEnd) {
-      const linkMatch = row.match(/<a[^>]+title="([^"]+)"[^>]*>([^<]+)<\/a>/i);
-      const imgMatch = row.match(/data-src="([^"]+)"/i) || row.match(/src="([^"]+)"/i);
-      let img = imgMatch ? imgMatch[1] : '';
-      if (img.startsWith('//')) img = 'https:' + img;
-      if (img.includes('data:image') || img.includes('placeholder')) img = '';
+    if (/Character\s*(?:<[^>]+>\s*)*Event/i.test(row) && currentStart && currentEnd) {
+      const bannerBlocks = row.match(/<div>\s*<span typeof="mw:File">[\s\S]*?<\/div>/gi) || [row];
+      for (const bBlock of bannerBlocks) {
+        const linkMatch = bBlock.match(/<a[^>]+title="([^"/]+)(?:\/\d{4}-\d{2}-\d{2})?"[^>]*>([^<]+)<\/a>/i);
+        const name = linkMatch ? linkMatch[2].trim() : '';
 
-      let name = linkMatch ? linkMatch[2].trim() : '';
-      if (!name) {
-        const parts = text.replace(/Character Event/i, '').trim().split(' ');
-        name = parts.slice(0, 4).join(' ');
-      }
+        const dataSrcMatch = bBlock.match(/data-src="([^"]+)"/i);
+        const srcMatch = bBlock.match(/src="([^"]+)"/i);
+        let img = dataSrcMatch ? dataSrcMatch[1] : (srcMatch ? srcMatch[1] : '');
+        if (img.startsWith('//')) img = 'https:' + img;
+        if (img.includes('data:image') || img.includes('placeholder')) img = '';
+        if (img) img = img.replace(/\/scale-to-width-down\/\d+/, '/scale-to-width-down/600');
 
-      if (name) {
-        banners.push({
-          game: 'genshin',
-          name,
-          start: currentStart,
-          end: currentEnd + (23 * 3600 + 59 * 60) * 1000,
-          image: img,
-          notes: 'Character Event Wish (Genshin Impact)'
-        });
+        if (name && name !== 'Character Event Wish') {
+          banners.push({
+            game: 'genshin',
+            name,
+            start: currentStart,
+            end: currentEnd + (23 * 3600 + 59 * 60) * 1000,
+            image: img,
+            notes: 'Character Event Wish (Genshin Impact)'
+          });
+        }
       }
     }
   }
@@ -107,44 +108,45 @@ async function fetchHSRBanners() {
   console.log('🔍 Obteniendo banners de Honkai: Star Rail...');
   const res = await fetch('https://honkai-star-rail.fandom.com/api.php?action=parse&page=Warp/List&prop=text&format=json');
   const json = await res.json();
-  const html = json.parse?.text?.['*'] || '';
+  const rawHtml = json.parse?.text?.['*'] || '';
+  const html = rawHtml.replace(/&#44;/g, ',').replace(/&#8212;/g, '-').replace(/&amp;/g, '&');
   const banners = [];
-  const rows = html.match(/<tr[\s\S]*?<\/tr>/gi) || [];
+  const rows = html.split(/<tr[^>]*>/i);
 
   let currentStart = null;
   let currentEnd = null;
   const dateRangeRegex = /([A-Za-z]+ \d{1,2}, \d{4})\s*-\s*([A-Za-z]+ \d{1,2}, \d{4})/i;
 
   for (const row of rows) {
-    const text = cleanText(row);
-    const dateMatch = text.match(dateRangeRegex);
+    const dateMatch = row.match(dateRangeRegex);
     if (dateMatch) {
       currentStart = parseDateStr(dateMatch[1]);
       currentEnd = parseDateStr(dateMatch[2]);
     }
 
-    if (row.includes('Character Event') && currentStart && currentEnd) {
-      const linkMatch = row.match(/<a[^>]+title="([^"]+)"[^>]*>([^<]+)<\/a>/i);
-      const imgMatch = row.match(/data-src="([^"]+)"/i) || row.match(/src="([^"]+)"/i);
-      let img = imgMatch ? imgMatch[1] : '';
-      if (img.startsWith('//')) img = 'https:' + img;
-      if (img.includes('data:image') || img.includes('placeholder')) img = '';
+    if (/Character\s*(?:<[^>]+>\s*)*Event/i.test(row) && currentStart && currentEnd) {
+      const bannerBlocks = row.match(/<div>\s*<span typeof="mw:File">[\s\S]*?<\/div>/gi) || [row];
+      for (const bBlock of bannerBlocks) {
+        const linkMatch = bBlock.match(/<a[^>]+title="([^"/]+)(?:\/\d{4}-\d{2}-\d{2})?"[^>]*>([^<]+)<\/a>/i);
+        const name = linkMatch ? linkMatch[2].trim() : '';
 
-      let name = linkMatch ? linkMatch[2].trim() : '';
-      if (!name) {
-        const parts = text.replace(/Character Event/i, '').trim().split(' ');
-        name = parts.slice(0, 4).join(' ');
-      }
+        const dataSrcMatch = bBlock.match(/data-src="([^"]+)"/i);
+        const srcMatch = bBlock.match(/src="([^"]+)"/i);
+        let img = dataSrcMatch ? dataSrcMatch[1] : (srcMatch ? srcMatch[1] : '');
+        if (img.startsWith('//')) img = 'https:' + img;
+        if (img.includes('data:image') || img.includes('placeholder')) img = '';
+        if (img) img = img.replace(/\/scale-to-width-down\/\d+/, '/scale-to-width-down/600');
 
-      if (name) {
-        banners.push({
-          game: 'hsr',
-          name,
-          start: currentStart,
-          end: currentEnd + (23 * 3600 + 59 * 60) * 1000,
-          image: img,
-          notes: 'Character Event Warp (Honkai: Star Rail)'
-        });
+        if (name && name !== 'Character Event Warp') {
+          banners.push({
+            game: 'hsr',
+            name,
+            start: currentStart,
+            end: currentEnd + (23 * 3600 + 59 * 60) * 1000,
+            image: img,
+            notes: 'Character Event Warp (Honkai: Star Rail)'
+          });
+        }
       }
     }
   }
@@ -155,24 +157,31 @@ async function fetchZZZBanners() {
   console.log('🔍 Obteniendo banners de Zenless Zone Zero...');
   const res = await fetch('https://zenless-zone-zero.fandom.com/api.php?action=parse&page=Exclusive_Channel/History&prop=text&format=json');
   const json = await res.json();
-  const html = json.parse?.text?.['*'] || '';
+  const rawHtml = json.parse?.text?.['*'] || '';
+  const html = rawHtml.replace(/&#44;/g, ',').replace(/&#8212;/g, '-').replace(/&amp;/g, '&');
   const banners = [];
-  const rows = html.match(/<tr[\s\S]*?<\/tr>/gi) || [];
+  const rows = html.split(/<tr[^>]*>/i);
+  const dateRegex = /(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+202\d/gi;
 
   for (const row of rows) {
-    const tds = (row.match(/<td[\s\S]*?<\/td>/gi) || []).map(cleanText);
-    if (tds.length >= 4) {
-      const name = tds[0].split(/\s+[A-Z][a-z]{2}\s+\d/)[0].trim();
-      const featured = tds[1];
-      const start = parseDateStr(tds[2]);
-      const end = parseDateStr(tds[3]);
+    const linkMatch = row.match(/<a[^>]+title="([^"/]+)(?:\/\d{4}-\d{2}-\d{2})?"[^>]*>([^<]+)<\/a>/i);
+    const name = linkMatch ? linkMatch[2].trim() : '';
 
-      const imgMatch = row.match(/data-src="([^"]+)"/i) || row.match(/src="([^"]+)"/i);
-      let img = imgMatch ? imgMatch[1] : '';
+    const dates = row.match(dateRegex);
+    if (name && dates && dates.length >= 2) {
+      const start = parseDateStr(dates[0]);
+      const end = parseDateStr(dates[1]);
+
+      const charMatches = [...row.matchAll(/<a[^>]+title="([^"]+)"[^>]*>([^<]+)<\/a><\/div>/gi)];
+      const featured = charMatches.map(m => m[2].trim()).filter(Boolean).join(', ');
+
+      const dataSrcMatch = row.match(/data-src="([^"]+)"/i);
+      const srcMatch = row.match(/src="([^"]+)"/i);
+      let img = dataSrcMatch ? dataSrcMatch[1] : (srcMatch ? srcMatch[1] : '');
       if (img.startsWith('//')) img = 'https:' + img;
       if (img.includes('data:image') || img.includes('placeholder')) img = '';
 
-      if (name && start && end) {
+      if (start && end) {
         banners.push({
           game: 'zzz',
           name,
@@ -187,46 +196,9 @@ async function fetchZZZBanners() {
   return banners;
 }
 
-async function fetchUMABanners() {
-  console.log('🔍 Obteniendo banners de Umamusume...');
-  const res = await fetch('https://umamusume.fandom.com/api.php?action=parse&page=Global_Banners&prop=text&format=json');
-  const json = await res.json();
-  const html = json.parse?.text?.['*'] || '';
-  const banners = [];
-  const rows = html.match(/<tr[\s\S]*?<\/tr>/gi) || [];
-
-  for (const row of rows) {
-    const tds = (row.match(/<td[\s\S]*?<\/td>/gi) || []).map(cleanText);
-    if (tds.length >= 3) {
-      const start = parseDateStr(tds[0]);
-      const end = parseDateStr(tds[1]);
-      const name = tds[2];
-      const type = tds[3] || 'Trainee';
-
-      const imgMatch = row.match(/data-src="([^"]+)"/i) || row.match(/src="([^"]+)"/i);
-      let img = imgMatch ? imgMatch[1] : '';
-      if (img.startsWith('//')) img = 'https:' + img;
-      if (img.includes('data:image') || img.includes('placeholder')) img = '';
-
-      if (name && start && end) {
-        banners.push({
-          game: 'uma',
-          name,
-          start,
-          end: end + (23 * 3600 + 59 * 60) * 1000,
-          image: img,
-          notes: `Tipo: ${type} (Umamusume Pretty Derby)`
-        });
-      }
-    }
-  }
-  return banners;
-}
-
 // ====== INICIALIZACIÓN DE FIREBASE ADMIN ======
 
 function getFirestoreDb() {
-  const admin = require('firebase-admin');
   if (admin.apps.length > 0) {
     return admin.firestore();
   }
@@ -280,7 +252,6 @@ async function main() {
   console.log('=====================================================\n');
 
   const now = Date.now();
-  // Consideramos activos y próximos, además de los que finalizaron hace menos de 7 días
   const thresholdTime = now - (7 * 24 * 3600 * 1000);
 
   let allBanners = [];
@@ -288,12 +259,11 @@ async function main() {
     const results = await Promise.allSettled([
       fetchGenshinBanners(),
       fetchHSRBanners(),
-      fetchZZZBanners(),
-      fetchUMABanners()
+      fetchZZZBanners()
     ]);
 
     results.forEach((r, idx) => {
-      const gameKey = ['genshin', 'hsr', 'zzz', 'uma'][idx];
+      const gameKey = ['genshin', 'hsr', 'zzz'][idx];
       if (r.status === 'fulfilled') {
         console.log(`✅ ${GAME_META[gameKey].label}: ${r.value.length} banners encontrados en total.`);
         allBanners.push(...r.value);
@@ -356,7 +326,6 @@ async function main() {
     );
 
     if (!existing) {
-      // Banner NUEVO: solo usamos la imagen si no es un icono miniatura de baja resolución
       const isLowRes = !banner.image ||
         banner.image.includes('Icon') ||
         banner.image.includes('scale-to-width-down/50') ||
@@ -379,10 +348,8 @@ async function main() {
         updatedAt: Date.now()
       });
       insertedCount++;
-      console.log(`   ✨ Nuevo banner creado: [${banner.game}] ${banner.name} ${initialImage ? '(con arte oficial)' : '(sin imagen, para que agregues tu URL favorita)'}`);
+      console.log(`   ✨ Nuevo banner creado: [${banner.game}] ${banner.name}`);
     } else {
-      // Banner EXISTENTE: NUNCA tocamos ni sobreescribimos las imágenes que el usuario configuró.
-      // Solo actualizamos las fechas de inicio/fin si cambiaron en la fuente oficial.
       const dateChanged =
         Math.abs((existing.start || 0) - banner.start) > 3600000 ||
         Math.abs((existing.end || 0) - banner.end) > 3600000;
@@ -394,7 +361,7 @@ async function main() {
           updatedAt: Date.now()
         });
         updatedCount++;
-        console.log(`   🔄 Fechas actualizadas: [${banner.game}] ${banner.name} (tus imágenes fueron preservadas intactas)`);
+        console.log(`   🔄 Fechas actualizadas: [${banner.game}] ${banner.name}`);
       } else {
         skippedCount++;
       }
