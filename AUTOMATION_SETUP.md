@@ -11,7 +11,6 @@ Esta guía te muestra cómo dejar configurada la actualización automática de b
    - **Genshin Impact** (`genshin-impact.fandom.com`)
    - **Honkai: Star Rail** (`honkai-star-rail.fandom.com`)
    - **Zenless Zone Zero** (`zenless-zone-zero.fandom.com`)
-   - **Umamusume** (`umamusume.fandom.com`)
 3. Identifica los banners activos y próximos con sus fechas, nombres, artes oficiales y personajes rate-up.
 4. Se conecta directamente a tu base de datos de **Firebase Firestore** y:
    - Agrega los banners nuevos que hayan salido.

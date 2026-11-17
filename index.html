@@ -2082,7 +2082,6 @@
           <option value="genshin">Genshin Impact</option>
           <option value="hsr">Honkai: Star Rail</option>
           <option value="zzz">Zenless Zone Zero</option>
-          <option value="uma">Umamusume</option>
         </select>
       </div>
       <button type="button" class="btn btn-ghost admin-only" id="bannerSyncBtn" style="margin-bottom:14px;">🔍 Buscar Banners Actuales</button>
@@ -2122,7 +2121,6 @@
           <option value="genshin">Genshin Impact</option>
           <option value="hsr">Honkai: Star Rail</option>
           <option value="zzz">Zenless Zone Zero</option>
-          <option value="uma">Umamusume</option>
         </select>
       </div>
       <div class="sync-source-row">
@@ -2156,7 +2154,6 @@
           <option value="genshin">Genshin Impact</option>
           <option value="hsr">Honkai: Star Rail</option>
           <option value="zzz">Zenless Zone Zero</option>
-          <option value="uma">Umamusume</option>
         </select>
       </div>
       <div class="field">
@@ -2281,7 +2278,6 @@
           <option value="genshin">Genshin Impact</option>
           <option value="hsr">Honkai: Star Rail</option>
           <option value="zzz">Zenless Zone Zero</option>
-          <option value="uma">Umamusume</option>
         </select>
       </div>
       <div class="field"><label>Nombre</label><input id="lName" placeholder="ej. Espada de la vendimia, Disco 4, Furina..."></div>
@@ -2555,8 +2551,7 @@
     const GAMES = {
       genshin: { label: 'Genshin Impact', color: 'var(--gold)', hex: '#f2c14e', icon: 'GI' },
       hsr: { label: 'Honkai: Star Rail', color: 'var(--purple)', hex: '#b98cea', icon: 'HSR' },
-      zzz: { label: 'Zenless Zone Zero', color: 'var(--blue)', hex: '#6fa9e6', icon: 'ZZZ' },
-      uma: { label: 'Umamusume', color: 'var(--pink)', hex: '#f28fc0', icon: 'UMA' }
+      zzz: { label: 'Zenless Zone Zero', color: 'var(--blue)', hex: '#6fa9e6', icon: 'ZZZ' }
     };
 
     function getGameMeta(key) {
@@ -3582,8 +3577,7 @@
     const BANNER_WIKI_SOURCES = {
       genshin: { host: 'genshin-impact.fandom.com', page: 'Wish/List' },
       hsr: { host: 'honkai-star-rail.fandom.com', page: 'Warp/List' },
-      zzz: { host: 'zenless-zone-zero.fandom.com', page: 'Exclusive_Channel/History' },
-      uma: { host: 'umamusume.fandom.com', page: 'Global_Banners' }
+      zzz: { host: 'zenless-zone-zero.fandom.com', page: 'Exclusive_Channel/History' }
     };
 
     const BannerFetcher = {
@@ -3608,49 +3602,40 @@
       },
 
       _parseBannersFromHtml(html, gameKey) {
-        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const cleanedHtml = (html || '').replace(/&#44;/g, ',').replace(/&#8212;/g, '-').replace(/&amp;/g, '&');
+        const doc = new DOMParser().parseFromString(cleanedHtml, 'text/html');
         const results = [];
         const dateRangeRegex = /([A-Za-z]+ \d{1,2}, \d{4})\s*[\u2013\u2014\-]\s*([A-Za-z]+ \d{1,2}, \d{4})/i;
         const rows = doc.querySelectorAll('tr');
 
         if (gameKey === 'zzz') {
+          const monthRegex = /(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+202\d/gi;
           rows.forEach(row => {
-            const tds = row.querySelectorAll('td');
-            if (tds.length >= 4) {
-              const name = (tds[0].textContent || '').split(/\s+[A-Z][a-z]{2}\s+\d/)[0].trim();
-              const featured = (tds[1].textContent || '').trim();
-              const start = this._normalizeDate(tds[2].textContent);
-              const end = this._normalizeDate(tds[3].textContent);
+            const rowText = row.textContent || '';
+            const link = row.querySelector('a[title]');
+            const name = link ? link.textContent.trim() : '';
+
+            const dates = rowText.match(monthRegex);
+            if (name && dates && dates.length >= 2) {
+              const start = this._normalizeDate(dates[0]);
+              const end = this._normalizeDate(dates[1]);
+
+              const charLinks = row.querySelectorAll('.card-label, .card-link a');
+              const featured = [...new Set([...charLinks].map(c => c.textContent.trim()).filter(Boolean))].join(', ');
+
               const img = row.querySelector('img');
-              const imageUrl = img ? (img.getAttribute('data-src') || img.getAttribute('src') || '') : '';
-              if (name && start && end) {
+              let imageUrl = img ? (img.getAttribute('data-src') || img.getAttribute('src') || '') : '';
+              if (imageUrl.startsWith('//')) imageUrl = 'https:' + imageUrl;
+              if (imageUrl.includes('data:image')) imageUrl = '';
+              if (imageUrl) imageUrl = imageUrl.replace(/\/scale-to-width-down\/\d+/, '/scale-to-width-down/600');
+
+              if (start && end) {
                 results.push({
                   name,
                   start,
                   end,
                   image: imageUrl && imageUrl.startsWith('http') ? imageUrl : '',
-                  notes: featured ? `Personajes: ${featured}` : ''
-                });
-              }
-            }
-          });
-        } else if (gameKey === 'uma') {
-          rows.forEach(row => {
-            const tds = row.querySelectorAll('td');
-            if (tds.length >= 3) {
-              const start = this._normalizeDate(tds[0].textContent);
-              const end = this._normalizeDate(tds[1].textContent);
-              const name = (tds[2].textContent || '').trim();
-              const type = (tds[3] ? tds[3].textContent : 'Trainee').trim();
-              const img = row.querySelector('img');
-              const imageUrl = img ? (img.getAttribute('data-src') || img.getAttribute('src') || '') : '';
-              if (name && start && end) {
-                results.push({
-                  name,
-                  start,
-                  end,
-                  image: imageUrl && imageUrl.startsWith('http') ? imageUrl : '',
-                  notes: `Tipo: ${type}`
+                  notes: featured ? `Personajes: ${featured}` : 'Exclusive Channel (Zenless Zone Zero)'
                 });
               }
             }
@@ -3658,6 +3643,7 @@
         } else {
           let currentStart = null;
           let currentEnd = null;
+
           rows.forEach(row => {
             const text = (row.textContent || '').replace(/[\u2013\u2014]/g, '-');
             const dateMatch = text.match(dateRangeRegex);
@@ -3665,34 +3651,45 @@
               currentStart = this._normalizeDate(dateMatch[1]);
               currentEnd = this._normalizeDate(dateMatch[2]);
             }
-            if (row.textContent && row.textContent.includes('Character Event') && currentStart && currentEnd) {
-              const link = row.querySelector('a[title], b');
-              let name = link ? link.textContent.trim() : '';
-              if (!name) {
-                name = text.replace(/Character Event/i, '').trim().slice(0, 35);
-              }
-              const img = row.querySelector('img');
-              const imageUrl = img ? (img.getAttribute('data-src') || img.getAttribute('src') || '') : '';
-              if (name) {
-                results.push({
-                  name,
-                  start: currentStart,
-                  end: currentEnd,
-                  image: imageUrl && imageUrl.startsWith('http') ? imageUrl : '',
-                  notes: gameKey === 'genshin' ? 'Character Event Wish' : 'Character Event Warp'
-                });
-              }
+
+            if (/Character\s*(?:Event|Warp|Wish)/i.test(text) && currentStart && currentEnd) {
+              const bannerDivs = row.querySelectorAll('.wish-banners > div, .warp-banners > div');
+              const items = bannerDivs.length > 0 ? [...bannerDivs] : [row];
+
+              items.forEach(item => {
+                const link = item.querySelector('a[title]');
+                const name = link ? link.textContent.trim() : '';
+                const img = item.querySelector('img');
+                let imageUrl = img ? (img.getAttribute('data-src') || img.getAttribute('src') || '') : '';
+                if (imageUrl.startsWith('//')) imageUrl = 'https:' + imageUrl;
+                if (imageUrl.includes('data:image')) imageUrl = '';
+                if (imageUrl) imageUrl = imageUrl.replace(/\/scale-to-width-down\/\d+/, '/scale-to-width-down/600');
+
+                if (name && !name.includes('Character Event')) {
+                  results.push({
+                    name,
+                    start: currentStart,
+                    end: currentEnd,
+                    image: imageUrl && imageUrl.startsWith('http') ? imageUrl : '',
+                    notes: gameKey === 'genshin' ? 'Character Event Wish (Genshin Impact)' : 'Character Event Warp (Honkai: Star Rail)'
+                  });
+                }
+              });
             }
           });
         }
 
+        // Deduplicación y orden cronológico descendente (los más recientes y próximos primero)
         const seen = new Set();
-        return results.filter(r => {
-          const key = r.name + r.start + r.end;
+        const unique = results.filter(r => {
+          const key = (r.name + '_' + r.start).toLowerCase();
           if (seen.has(key)) return false;
           seen.add(key);
           return true;
-        }).slice(0, 30);
+        });
+
+        unique.sort((a, b) => (b.start || '').localeCompare(a.start || ''));
+        return unique.slice(0, 40);
       },
 
       _normalizeDate(raw) {
@@ -3981,12 +3978,11 @@
     let equipmentCatalog = {
       genshin: { weapons: [], artifacts: [] },
       hsr: { lightCones: [], relics: [], planarOrnaments: [] },
-      zzz: { wEngines: [], driveDiscs: [] },
-      uma: { weapons: [], artifacts: [] }
+      zzz: { wEngines: [], driveDiscs: [] }
     };
 
     document.addEventListener('DOMContentLoaded', async () => {
-      // 1. Catálogo local estático e inmutable en español (Genshin, ZZZ, UMA)
+      // 1. Catálogo local estático e inmutable en español (Genshin, ZZZ)
       const baseCatalog = {
         genshin: {
           weapons: [
@@ -4024,16 +4020,14 @@
             "Heavy Metal Físico", "Ácido Ártico", "Motor Integrado", "Pico de Fuego", 
             "Disco Urbano 01", "Disco de Impacto", "Procesador Anémico", "Núcleo de Asalto"
           ]
-        },
-        uma: { weapons: [], artifacts: [] }
+        }
       };
 
       // Asignación inicial garantizada
       equipmentCatalog = {
         genshin: { weapons: [...baseCatalog.genshin.weapons], artifacts: [...baseCatalog.genshin.artifacts] },
         hsr: { lightCones: [], relics: [], planarOrnaments: [] },
-        zzz: { wEngines: [...baseCatalog.zzz.wEngines], driveDiscs: [...baseCatalog.zzz.driveDiscs] },
-        uma: { weapons: [], artifacts: [] }
+        zzz: { wEngines: [...baseCatalog.zzz.wEngines], driveDiscs: [...baseCatalog.zzz.driveDiscs] }
       };
 
       // 2. Intento de fusión con ./data/equipment-database.json si existe en tu proyecto
